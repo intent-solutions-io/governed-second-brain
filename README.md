@@ -1,11 +1,12 @@
-<h1 align="center">Intent Knowledge OS</h1>
-
 <p align="center">
-  <strong>Compile, then govern.</strong><br>
-  A local-first knowledge stack that turns raw corpus into <em>governed, citation-backed memory</em> — with receipts — for humans and agents.
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
+    <img alt="Intent Knowledge OS — Compile, then govern. Local-first knowledge with receipts." src="assets/banner-light.svg" width="860">
+  </picture>
 </p>
 
 <p align="center">
+  A local-first knowledge stack that turns raw corpus into <em>governed, citation-backed memory</em> — with receipts — for humans and agents.<br>
   <em>Compile knowledge for the machine. Distill understanding for the human.</em>
 </p>
 
@@ -43,7 +44,7 @@ This stack is built around that gap.
 
 The category optimizes one axis: recall. We compete on a different one: **govern + receipts.**
 
-| Capability | Vector stores<br><sub>Pinecone · Chroma · pgvector</sub> | Agent-memory frameworks<br><sub>Mem0 · Letta · Zep · GBrain</sub> | **Compile-Then-Govern** |
+| Capability | Vector stores<br><sub>Pinecone · Chroma · pgvector</sub> | Agent-memory layers<br><sub>gstack/GBrain · Mem0 · Letta · Zep</sub> | **Compile-Then-Govern** |
 |---|:---:|:---:|:---:|
 | Recall / retrieval | ✅ | ✅ | ✅ |
 | **Derived** knowledge (summaries, concepts, contradictions) | ❌ raw chunks | ◑ extraction | ✅ 6 compiler passes |
@@ -59,6 +60,8 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 **What they offer:** fast, scalable recall — drop in embeddings, get back similar chunks (or, for the agent-memory frameworks, scored/extracted memories across turns).
 
 **What we do better:** we don't hand the model a pile of similar chunks and hope. We *derive* knowledge, *govern* what's allowed to become durable memory with deterministic code, and *prove* every retrieval with a citation + an audit chain. The model proposes; the system decides and records.
+
+> **On gstack / GBrain.** [gstack](https://github.com/garrytan/gstack) (Garry Tan's Claude Code harness, ~90K★) ships [GBrain](https://github.com/garrytan/gstack) as its memory layer, and it's genuinely strong at the thing it's built for: recall — top LongMemEval-S scores, ~92% fewer tokens per session, near-zero-friction capture. That's the recall axis, done well. What a memory layer doesn't do — by design, it's memory, not a control plane — is gate what becomes durable knowledge through deterministic policy, or hand you a tamper-evident receipt of what the agent actually used. *"Better memory for agents, but no receipt for what the agent did with it"* was the exact critique that kicked off this project. Compile-Then-Govern is the answer: recall **and** governance **and** receipts.
 
 ## What's in the stack
 

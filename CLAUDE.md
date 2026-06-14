@@ -1,0 +1,64 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What This Is
+
+The **umbrella / landing repo** for the **Compile-Then-Govern** constellation. It contains
+ecosystem-level documentation only — **no application code, no build, no tests, no lint.** The
+entire repo is `README.md` plus a handful of governance files (`CONTRIBUTING.md`, `SECURITY.md`,
+`LICENSE`) and `assets/` (banner + social-card SVG/PNG). `.github/` is intentionally empty (CI
+badges in the README point at the flagship repos' workflows, not this one).
+
+The single deliverable here is the README: it explains what the components are, how they stack,
+and why the architecture beats vector stores / agent-memory layers. Treat the README as the
+product.
+
+## Where the Code Actually Lives
+
+This repo is just the map. Code, issues, PRs, test gates, and security reports belong in the
+flagship repos:
+
+| Repo | Layer | Role |
+|------|-------|------|
+| [`intentional-cognition-os`](https://github.com/jeremylongshore/intentional-cognition-os) (ICO) | **Compile** | Local-first knowledge OS. Deterministic kernel (SQLite + JSONL) + probabilistic compiler (Claude). 6 compiler passes → emits a governance spool. |
+| [`qmd-team-intent-kb`](https://github.com/jeremylongshore/qmd-team-intent-kb) (INTKB) | **Govern** | Deterministic control plane. Consumes ICO's spool, runs dedupe → policy → promotion, append-only audit log. |
+| [`qmd`](https://github.com/tobi/qmd) (by @tobi) | **Retrieve** | On-device hybrid search (BM25 + vector + LLM rerank). Pinned upstream dependency; every result is a `qmd://` citation. |
+
+Per `CONTRIBUTING.md`: code/feature PRs go to the flagship repos. Only **ecosystem-level doc
+fixes** (this README, the dependency map, the status table, the diagrams) belong here.
+
+## The Architecture Thesis (why the README says what it says)
+
+Understanding the wording matters more than any file structure here. The whole pitch rests on
+one constraint:
+
+> **The model proposes; the deterministic system owns durable state and control.**
+
+- **Compile, don't index** — ICO *derives* knowledge (summaries, concepts, contradictions, gaps),
+  keeping raw and derived strictly separate with provenance from the first byte.
+- **Govern by code, not by model** — dedupe, policy, secret-detection, trust levels, tenant
+  isolation, and promotion are deterministic in INTKB's kernel. The model never writes durable
+  state directly.
+- **Receipts are the wedge** — the differentiator vs. the "AI memory" category is not better
+  recall, it's a **tamper-evident, SHA-256 hash-chained audit trail** (`prev_hash` per JSONL
+  event) plus inline `qmd://` citations, verifiable after the fact via `ico audit verify`.
+
+When editing the README, preserve this framing: the competitive axis is **govern + receipts**,
+not recall. Don't soften "deterministic," "append-only," or "hash-chained" into vague
+memory-marketing language — the precision is the point.
+
+## Editing Conventions
+
+- **Mermaid + dual-theme SVG banners**: the README embeds two Mermaid diagrams (a sequence flow
+  and an architecture flowchart) with inline `%%{init...}%%` theme blocks, and a
+  `<picture>`-switched dark/light banner. After editing either, verify rendering on the GitHub
+  web view — there is no local preview build.
+- **Assets are committed binaries/SVG** in `assets/`. The banner exists as both `.svg` (source of
+  truth, referenced by the README) and `.png` (2x raster fallback); `social-card.*` is the
+  1280×640 GitHub social preview. Regenerate the PNGs if the SVG changes.
+- **The thesis doc is byte-identical across repos**: *"Compile, Then Govern"* lives at
+  `000-docs/034-AT-NTRP-ecosystem-thesis.md` in **both** flagships (not in this repo). If a claim
+  in this README is sourced from it, keep them consistent.
+- **Status table** (versions / licenses near the bottom of the README) drifts as the flagships
+  release. Verify against the actual repo tags before changing version numbers.

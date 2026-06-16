@@ -1,20 +1,22 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-    <img alt="Intent Knowledge OS — Compile, then govern. Local-first knowledge with receipts." src="assets/banner-light.svg" width="860">
+    <img alt="Governed Second Brain — local-first, citation-backed knowledge with receipts. Compile, then govern." src="assets/banner-light.svg" width="860">
   </picture>
 </p>
 
+<h1 align="center">Governed Second Brain</h1>
+
 <p align="center">
-  A local-first knowledge stack that turns raw corpus into <em>governed, citation-backed memory</em> — with receipts — for humans and agents.<br>
-  <em>Compile knowledge for the machine. Distill understanding for the human.</em>
+  Turn <em>your own</em> files into a governed, <code>qmd://</code>-cited second brain with a tamper-evident audit trail — for humans and agents.<br>
+  <strong>Compile, then govern.</strong> Local by default; remote sharing is your opt-in.
 </p>
 
 <p align="center">
   <a href="https://github.com/jeremylongshore/intentional-cognition-os/actions/workflows/ci.yml"><img src="https://github.com/jeremylongshore/intentional-cognition-os/actions/workflows/ci.yml/badge.svg" alt="ICO CI"></a>
   <a href="https://github.com/jeremylongshore/qmd-team-intent-kb/actions/workflows/ci.yml"><img src="https://github.com/jeremylongshore/qmd-team-intent-kb/actions/workflows/ci.yml/badge.svg" alt="INTKB CI"></a>
   <a href="https://www.npmjs.com/package/intentional-cognition-os"><img src="https://img.shields.io/npm/v/intentional-cognition-os?style=flat-square&logo=npm&label=ico" alt="ico on npm"></a>
-  <img src="https://img.shields.io/badge/License-MIT-10b981?style=flat-square" alt="License: MIT">
+  <img src="https://img.shields.io/badge/License-Apache--2.0-10b981?style=flat-square" alt="License: Apache-2.0">
   <img src="https://img.shields.io/badge/local--first-on--device-0ea5e9?style=flat-square" alt="local-first">
 </p>
 
@@ -26,7 +28,7 @@
 
 ---
 
-This repo is the umbrella for the **Compile-Then-Govern** constellation. Each component is its own independently developed and released repository under `jeremylongshore/*`; this repo is where we explain **what they are, what they do, how they stack, and why they beat the alternatives.** No application code lives here — just the map.
+This repo is the umbrella for the **Governed Second Brain** stack — local-first knowledge built on the *compile, then govern* architecture. Each component is its own independently developed and released repository; this repo is where we explain **what they are, what they do, how they stack, and why they beat the alternatives.** No application code lives here — just the map.
 
 ## The 60-second version
 
@@ -44,7 +46,7 @@ This stack is built around that gap.
 
 The category optimizes one axis: recall. We compete on a different one: **govern + receipts.**
 
-| Capability | Vector stores<br><sub>Pinecone · Chroma · pgvector</sub> | Agent-memory layers<br><sub>gstack/GBrain · Mem0 · Letta · Zep</sub> | **Compile-Then-Govern** |
+| Capability | Vector stores<br><sub>Pinecone · Chroma · pgvector</sub> | Agent-memory layers<br><sub>gstack/GBrain · Mem0 · Letta · Zep</sub> | **Governed Second Brain** |
 |---|:---:|:---:|:---:|
 | Recall / retrieval | ✅ | ✅ | ✅ |
 | **Derived** knowledge (summaries, concepts, contradictions) | ❌ raw chunks | ◑ extraction | ✅ 6 compiler passes |
@@ -61,14 +63,14 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 
 **What we do better:** we don't hand the model a pile of similar chunks and hope. We *derive* knowledge, *govern* what's allowed to become durable memory with deterministic code, and *prove* every retrieval with a citation + an audit chain. The model proposes; the system decides and records.
 
-> **On gstack / GBrain.** [gstack](https://github.com/garrytan/gstack) (Garry Tan's Claude Code harness, ~90K★) ships [GBrain](https://github.com/garrytan/gstack) as its memory layer, and it's genuinely strong at the thing it's built for: recall — top LongMemEval-S scores, ~92% fewer tokens per session, near-zero-friction capture. That's the recall axis, done well. What a memory layer doesn't do — by design, it's memory, not a control plane — is gate what becomes durable knowledge through deterministic policy, or hand you a tamper-evident receipt of what the agent actually used. *"Better memory for agents, but no receipt for what the agent did with it"* was the exact critique that kicked off this project. Compile-Then-Govern is the answer: recall **and** governance **and** receipts.
+> **On gstack / GBrain.** [gstack](https://github.com/garrytan/gstack) (Garry Tan's Claude Code harness, ~90K★) ships [GBrain](https://github.com/garrytan/gstack) as its memory layer, and it's genuinely strong at the thing it's built for: recall — top LongMemEval-S scores, ~92% fewer tokens per session, near-zero-friction capture. That's the recall axis, done well. What a memory layer doesn't do — by design, it's memory, not a control plane — is gate what becomes durable knowledge through deterministic policy, or hand you a tamper-evident receipt of what the agent actually used. *"Better memory for agents, but no receipt for what the agent did with it"* was the exact critique that kicked off this project. The Governed Second Brain is the answer: recall **and** governance **and** receipts.
 
 ## What's in the stack
 
 | Repo | Layer | What it does |
 |------|-------|--------------|
-| **[intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os)** (`ico`) | **Compile** | Local-first knowledge OS. Ingests raw corpus (PDF / markdown / web clips) and compiles it into semantic knowledge through six passes, runs episodic research tasks, and emits a governance spool. Deterministic kernel (SQLite + JSONL) + probabilistic compiler (Claude). 5 workspace packages, MIT. |
-| **[qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb)** (INTKB) | **Govern** | Governed team-memory platform. Consumes ICO's spool, runs every candidate through dedupe → policy → promotion, keeps an append-only audit log, and exports curated memory to a searchable tree. The deterministic control plane. 6 apps + 8 packages, MIT. |
+| **[intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os)** (`ico`) | **Compile** | Local-first knowledge OS. Ingests raw corpus (PDF / markdown / web clips) and compiles it into semantic knowledge through six passes, runs episodic research tasks, and emits a governance spool. Deterministic kernel (SQLite + JSONL) + probabilistic compiler (Claude). 5 workspace packages, Apache-2.0. |
+| **[qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb)** (INTKB) | **Govern** | Governed team-memory platform. Consumes ICO's spool, runs every candidate through dedupe → policy → promotion, keeps an append-only audit log, and exports curated memory to a searchable tree. The deterministic control plane. 6 apps + 8 packages, Apache-2.0. |
 | **[qmd](https://github.com/tobi/qmd)** (`@tobilu/qmd`) | **Retrieve** | On-device hybrid search for markdown — BM25 + vector + LLM reranking, by [@tobi](https://github.com/tobi). The retrieval substrate. Every hit is a `qmd://<collection>/<path>` URI — the citation. |
 
 ## How it works
@@ -183,7 +185,19 @@ $ ico audit verify --json
 { "ok": true, "filesScanned": 1, "totalEvents": 61, "cleanFiles": 1, "breaks": [] }
 ```
 
-That's the receipt. A vector store can tell you what's *similar*. This tells you what was *used*, where it *came from*, and proves *nobody edited the record*.
+That's the receipt. A vector store can tell you what's *similar*. This tells you what was *used* and where it *came from* — and the hash chain **detects** any record altered or reordered after the fact.
+
+### What the receipt does *not* do — read this before you trust it
+
+Honesty is the whole point of a receipt, so here's the trust model, stated per mode:
+
+| | **Local mode** (default) | **Shared / hosted mode** (your opt-in) |
+|---|---|---|
+| Guarantees | **Integrity + ordering** — detects edits, deletions, and reordering of any event after it was written | Adds **attributable, externally anchored** history once the chain head is signed/anchored |
+| Does **not** guarantee | Non-repudiation on its own: a determined local actor with write access can edit an event *and* re-hash the chain forward, and verification passes again | — |
+| How that gap is closed | **Anchor the chain head externally** (sign it via `git-exporter`, or stamp it with OpenTimestamps) so a silent full-rewrite is detectable too — on the roadmap, gated *before* any cross-actor "tamper-evident" claim ships | Anchored chain head + per-actor signatures |
+
+So: *tamper-**evident**, not tamper-proof.* The chain proves a record wasn't *quietly* changed; it is **not** a blockchain, it is **not** immutable storage, and on its own it does **not** prove *who* wrote what. Within a single trust boundary — your machine — that integrity-and-ordering guarantee is exactly what you want. Across actors, the external anchor is what upgrades detection into attribution.
 
 ## Is it real? — the proof
 
@@ -216,8 +230,8 @@ For the full chain (including ICO's compile step) set `ANTHROPIC_API_KEY` and ru
 
 | Repo | Version | License |
 |------|---------|---------|
-| [intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os) | v1.10.0 | MIT |
-| [qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb) | v0.6.0 | MIT |
+| [intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os) | v1.12.0 | Apache-2.0 |
+| [qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb) | v0.6.0 | Apache-2.0 |
 | [qmd](https://github.com/tobi/qmd) (upstream dependency) | 2.5.3 — pinned · Dependabot-tracked · integration-test-gated | MIT |
 
 ## Documentation
@@ -228,7 +242,7 @@ For the full chain (including ICO's compile step) set `ANTHROPIC_API_KEY` and ru
 
 ## License
 
-MIT on both flagship repos and this umbrella. See each repo's `LICENSE`.
+Apache-2.0 on both flagship repos and this umbrella. See each repo's `LICENSE`. (qmd, the upstream retrieval dependency, is MIT-licensed by its author, [@tobi](https://github.com/tobi).)
 
 ---
 

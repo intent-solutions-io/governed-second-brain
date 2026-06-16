@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-The **umbrella / landing repo** for the **Compile-Then-Govern** constellation. It contains
+The **umbrella / landing repo** for **Governed Second Brain** — the local-first knowledge stack
+built on the *compile, then govern* architecture. (Renamed from `compile-then-govern` on
+2026-06-16; the GitHub repo is now `intent-solutions-io/governed-second-brain` and the old URL
+auto-redirects. The local working directory is still `compile-then-govern/`.) It contains
 ecosystem-level documentation only — **no application code, no build, no tests, no lint.** The
 entire repo is `README.md` plus a handful of governance files (`CONTRIBUTING.md`, `SECURITY.md`,
 `LICENSE`) and `assets/` (banner + social-card SVG/PNG). `.github/` is intentionally empty (CI
@@ -48,6 +51,14 @@ When editing the README, preserve this framing: the competitive axis is **govern
 not recall. Don't soften "deterministic," "append-only," or "hash-chained" into vague
 memory-marketing language — the precision is the point.
 
+Equally, don't *over*claim. The chain is tamper-**evident** (detection of edits/reordering),
+**not** tamper-proof: a local writer with write access can edit an event *and* re-hash the chain
+forward, and `ico audit verify` passes again. So the README carries a "What the receipt does
+*not* do" trust-model box — local = integrity + ordering; cross-actor non-repudiation needs the
+external chain-head anchor (sign via `git-exporter` / OpenTimestamps), which is on the roadmap and
+gated before any cross-actor "tamper-evident" claim. Keep that box honest. **Forbidden words:**
+tamper-proof, immutable, non-repudiation (for local mode), blockchain.
+
 ## Editing Conventions
 
 - **Mermaid + dual-theme SVG banners**: the README embeds two Mermaid diagrams (a sequence flow
@@ -55,8 +66,11 @@ memory-marketing language — the precision is the point.
   `<picture>`-switched dark/light banner. After editing either, verify rendering on the GitHub
   web view — there is no local preview build.
 - **Assets are committed binaries/SVG** in `assets/`. The banner exists as both `.svg` (source of
-  truth, referenced by the README) and `.png` (2x raster fallback); `social-card.*` is the
-  1280×640 GitHub social preview. Regenerate the PNGs if the SVG changes.
+  truth, referenced by the README) and `.png` (2x raster fallback, 2400×680); `social-card.*` is the
+  1280×640 GitHub social preview. The SVGs carry live `<text>` — the product title is editable text,
+  not outlined paths. Regenerate the PNGs if the SVG changes with **`rsvg-convert`** (NOT ImageMagick
+  `convert`, whose internal renderer mangles the SVG fonts/gradients):
+  `rsvg-convert -w 2400 -h 680 banner-dark.svg -o banner-dark.png` (social-card uses `-w 1280 -h 640`).
 - **The thesis doc is byte-identical across repos**: *"Compile, Then Govern"* lives at
   `000-docs/034-AT-NTRP-ecosystem-thesis.md` in **both** flagships (not in this repo). If a claim
   in this README is sourced from it, keep them consistent.

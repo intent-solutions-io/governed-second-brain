@@ -1,7 +1,8 @@
 # Contributing
 
-This repository is the **umbrella / landing** for the Compile-Then-Govern stack. It holds
-ecosystem-level documentation only — there is no application code here.
+This repository is the **umbrella / landing** for the **Governed Second Brain** stack (built on
+the *compile, then govern* architecture). It holds ecosystem-level documentation only — there is
+no application code here.
 
 Work happens in the flagship repos:
 

@@ -215,7 +215,7 @@ Not a claim — a trail:
 
 **Most people want the plugin** — the packaged product that runs the whole stack locally inside Claude Code or Cowork:
 
-→ **[jeremylongshore/governed-second-brain-plugin](https://github.com/jeremylongshore/governed-second-brain-plugin)** *(one-command `npx … init <folder>` installer in progress)*
+→ **[jeremylongshore/governed-second-brain-plugin](https://github.com/jeremylongshore/governed-second-brain-plugin)** — one command: `npx governed-second-brain init <folder>` *(`--index-only` for zero egress)*
 
 To instead see the raw chain run from source — no API key, no secrets:
 

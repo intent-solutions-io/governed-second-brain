@@ -197,11 +197,11 @@ Honesty is the whole point of a receipt, so here's the trust model, stated per m
 
 | | **Local mode** (default) | **Shared / hosted mode** (your opt-in) |
 |---|---|---|
-| Guarantees | **Integrity + ordering** — detects edits, deletions, and reordering of any event after it was written | Adds **attributable, externally anchored** history once the chain head is signed/anchored |
-| Does **not** guarantee | Non-repudiation on its own: a determined local actor with write access can edit an event *and* re-hash the chain forward, and verification passes again | — |
-| How that gap is closed | **Anchor the chain head externally** (sign it via `git-exporter`, or stamp it with OpenTimestamps) so a silent full-rewrite is detectable too — on the roadmap, gated *before* any cross-actor "tamper-evident" claim ships | Anchored chain head + per-actor signatures |
+| Guarantees | **Integrity + ordering + rewrite-detection** — every govern snapshots the chain head into an append-only, hash-chained anchor log committed to git; `brain_audit_verify` flags edits, deletions, reordering, **and** a silent full re-hash-forward rewrite (which the chain alone misses) | Adds **attributable, externally anchored** history once you push the anchor repo to a remote |
+| Does **not** guarantee | Non-repudiation on its own: a local actor would now have to rewrite the chain, the anchor log, **and** the git history in lockstep (plus the remote's history, if you've pushed it) — much harder, and it leaves git evidence — but not impossible on a single, unshared machine | — |
+| How it's closed | **Implemented:** `brain_govern` commits the chain head to a git-backed anchor log; `brain_audit_verify` / `verifyAnchors` cross-check the live chain against it. **Push that repo to a remote** for cross-actor tamper-evidence | Anchored + pushed chain head + per-actor signatures |
 
-So: *tamper-**evident**, not tamper-proof.* The chain proves a record wasn't *quietly* changed; it is **not** a blockchain, it is **not** immutable storage, and on its own it does **not** prove *who* wrote what. Within a single trust boundary — your machine — that integrity-and-ordering guarantee is exactly what you want. Across actors, the external anchor is what upgrades detection into attribution.
+So: *tamper-**evident**, not tamper-proof.* The chain plus the anchor prove a record wasn't *quietly* changed — even via a full rewrite, checked against the git-committed anchors; it is **not** a blockchain, it is **not** immutable storage, and on its own it does **not** prove *who* wrote what. Within a single trust boundary — your machine — that's exactly the integrity guarantee you want. Across actors, pushing the anchor to a remote + per-actor signatures is what upgrades detection into attribution.
 
 ## Is it real? — the proof
 

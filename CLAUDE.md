@@ -7,15 +7,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The **umbrella / landing repo** for **Governed Second Brain** — the local-first knowledge stack
 built on the *compile, then govern* architecture. (Renamed from `compile-then-govern` on
 2026-06-16; the GitHub repo is now `intent-solutions-io/governed-second-brain` and the old URL
-auto-redirects. The local working directory is still `compile-then-govern/`.) It contains
-ecosystem-level documentation only — **no application code, no build, no tests, no lint.** The
-entire repo is `README.md` plus a handful of governance files (`CONTRIBUTING.md`, `SECURITY.md`,
-`LICENSE`) and `assets/` (banner + social-card SVG/PNG). `.github/` is intentionally empty (CI
-badges in the README point at the flagship repos' workflows, not this one).
+auto-redirects. The local working directory is still `compile-then-govern/`.) Two things live here:
 
-The single deliverable here is the README: it explains what the components are, how they stack,
-and why the architecture beats vector stores / agent-memory layers. Treat the README as the
-product.
+1. **The landing README** (+ governance files `CONTRIBUTING.md`/`SECURITY.md`/`LICENSE`, `assets/`
+   banner + social-card). It explains what the components are, how they stack, and why the
+   architecture beats vector stores / agent-memory layers.
+2. **The public plugin** (Phase A, added 2026-06-16): a local-first, in-process MCP plugin —
+   `.claude-plugin/{plugin.json,marketplace.json}`, `.mcp.json` (local stdio server
+   `governed-brain`), `skills/{brain,brain-save}`, `src/*.ts` (TS source), and the committed
+   esbuild bundle `plugin-runtime/governed-brain.cjs`.
+
+### Building the plugin
+
+The MCP runtime is bundled from the sibling **`../qmd-team-intent-kb`** workspace — `src/local-server.ts`
+imports its compiled packages (curator/store/qmd-adapter/claude-runtime/schema/common) which esbuild
+**inlines** into the .cjs (so the private INTKB workspace is never published — MUST-FIX #1 resolved by
+bundling, not publishing). Build steps:
+
+```bash
+pnpm -C ../qmd-team-intent-kb build   # refresh INTKB dist/ (the bundle inlines compiled JS — stale dist = stale bundle)
+pnpm install                          # links the 8 INTKB packages + installs zod/sdk/better-sqlite3
+pnpm build                            # node build.mjs → plugin-runtime/governed-brain.cjs
+node smoke.mjs                        # capture→govern→search over the MCP protocol, isolated ~/.gsb-smoke base
+```
+
+Hard facts the build depends on:
+- **Single native dep**: `better-sqlite3` is `--external` (a compiled `.node` can't be bundled) + needs
+  its `bindings` dep; ship a complete `plugin-runtime/node_modules/better-sqlite3` install tree (the
+  Phase B installer provisions it per-platform — NOT committed). `ajv`/`ajv-formats` stay **bundled**
+  (the MCP SDK validates every tool call with ajv — externalizing them makes the runtime inert).
+- **Single zod**: `build.mjs` aliases `zod` to one copy so the SDK and our tool schemas share an
+  instance (cross-instance `instanceof` checks otherwise break tool registration).
+- **qmd 2.x on PATH** for retrieval (`brain_search` runs `qmd search`); govern degrades gracefully
+  (capture/promote/audit still work) if qmd is absent — only the index refresh waits.
+- **Single-user neutralizers**: `.mcp.json` pins `TEAMKB_TENANT_ID=local`; the server hard-defaults
+  the owner role (local mode is a single trust domain) and omits `TEAMKB_API_URL` (in-process, no network).
+
+Tool surface (matches the two skills' `allowed-tools` exactly — no dead tools): `brain_search`,
+`brain_status` (read); `brain_capture`, `brain_govern`, `brain_transition` (write). `brain_govern` is
+the daemon-free drive of dedupe→policy→promote with the hash-chained audit receipt.
 
 ## Where the Code Actually Lives
 

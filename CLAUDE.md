@@ -91,6 +91,23 @@ tamper-proof, immutable, non-repudiation (for local mode), blockchain.
   release. Verify against the actual repo tags before changing version numbers.
 
 
+## Retrieval backend decision (2026-06-18)
+
+Retrieval is **BM25-on-qmd today** and stays that way for now (`brain_search` → `qmd search`;
+zero ML, cited hits work). The thinker-canon council decided the long-run path: **ship BM25 now
+→ build a Recall@10/nDCG@10 eval → then a *lean* native sqlite-vec semantic backend on
+EmbeddingGemma-300M only (~320 MB)**, dropping qmd's 1.7 B query-expander + 0.6 B reranker.
+**Skip** qmd's 2.2 GB hybrid (heavier *and* unwired in the adapter); **reject** the stale NEXUS
+RAG stack. Semantic recall is eval-gated and deferred.
+
+**Non-negotiable before any semantic path:** the retrieval model weights are currently
+unsigned/unpinned (the manifest hashes the spool, never the GGUFs) — they get SHA-256-pinned +
+fail-closed first. A govern-by-receipts brand can't ship an unverified retrieval brain.
+
+Canonical record: `qmd-team-intent-kb/000-docs/038-AT-DECR`. Tracked in epic
+`qmd-team-intent-kb-0t9` (GH `jeremylongshore/qmd-team-intent-kb#170` / Plane INTKB-7);
+`compile-then-govern-qy7.13` folds in.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker
 

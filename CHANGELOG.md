@@ -20,6 +20,9 @@ engine and plugin repos. Format based on
 
 - Status table: the installable plugin is pinned to **v0.1.6** (#3); ICO **v1.14.0**;
   the plugin row added (npm + SLSA provenance).
+- Status table: `qmd-team-intent-kb` pinned to **v0.7.0** (was v0.6.0).
+- CLAUDE.md trust-model guidance: the external chain-head anchor is now described as
+  **implemented** (verifiable via `ico audit verify`) rather than "on the roadmap".
 
 ## [2026-06-16] — Productization
 

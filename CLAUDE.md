@@ -68,8 +68,9 @@ Equally, don't *over*claim. The chain is tamper-**evident** (detection of edits/
 **not** tamper-proof: a local writer with write access can edit an event *and* re-hash the chain
 forward, and `ico audit verify` passes again. So the README carries a "What the receipt does
 *not* do" trust-model box — local = integrity + ordering; cross-actor non-repudiation needs the
-external chain-head anchor (sign via `git-exporter` / OpenTimestamps), which is on the roadmap and
-gated before any cross-actor "tamper-evident" claim. Keep that box honest. **Forbidden words:**
+external chain-head anchor (sign via `git-exporter` / OpenTimestamps), which is **implemented**
+and verifiable via `ico audit verify` (`brain_govern` commits the chain head; `ico audit verify` /
+`brain_audit_verify` cross-check it). Keep that box honest. **Forbidden words:**
 tamper-proof, immutable, non-repudiation (for local mode), blockchain.
 
 ## Editing Conventions

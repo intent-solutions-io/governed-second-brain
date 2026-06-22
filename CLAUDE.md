@@ -44,6 +44,27 @@ flagship repos:
 Per `CONTRIBUTING.md`: code/feature PRs go to the flagship repos (or the plugin repo). Only
 **ecosystem-level doc fixes** (this README, the dependency map, the status table, the diagrams) belong here.
 
+## Grounded system map, distribution & backup scope (read before guessing about data/state)
+
+Where the brain's state actually lives, what's source-of-truth vs derived, the distribution model,
+and the correct backup/DR scope are **code-verified** in
+[`000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md`](000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md)
+(start there — don't re-derive from scratch; also the auto-memory `governed-brain-architecture-and-backup-scope`). Key facts:
+
+- **The whole live brain is ONE directory on the dev box (itself a VPS): `~/.teamkb/` (~48–56 MB).**
+  The production VPS `intentsolutions` holds **no brain** (verified). Two SQLite DBs: ICO
+  `brain/.ico/state.db` (compile) + INTKB `teamkb.db` (govern). Plus `brain/raw/` (corpus = source of
+  truth), `brain/wiki/` (compiled Markdown, expensive-derived), `brain/audit/` + `audit_events`
+  (hash-chained receipts), `kb-export/` + `qmd-index/` (cheaply derived), `tokens.json` (a **SECRET** → SOPS).
+- **Distribution — two channels, don't conflate:** the **public plugin**
+  `jeremylongshore/governed-second-brain-plugin` (installable artifact for outsiders) vs the **private team
+  marketplace** `intent-solutions-io/claude-plugins`, where the internal **`intent-brain`** plugin is
+  published — that's how Jeremy's team (e.g. Ope) installs the brain.
+- **Backup/DR (`c5k.4`) is NOT done:** `~/bin/teamkb-backup.sh` currently snapshots only `teamkb.db` —
+  far too narrow. Correct scope = Tier A (`teamkb.db` + `brain/.ico/state.db` + `brain/raw/` +
+  `brain/audit/` + `brain/spool/`) + Tier B (`brain/wiki/`, `feedback/`); skip the derived dirs;
+  handle `tokens.json` via SOPS.
+
 ## The Architecture Thesis (why the README says what it says)
 
 Understanding the wording matters more than any file structure here. The whole pitch rests on

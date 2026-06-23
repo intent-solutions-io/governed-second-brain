@@ -60,17 +60,20 @@ and the correct backup/DR scope are **code-verified** in
   `jeremylongshore/governed-second-brain-plugin` (installable artifact for outsiders) vs the **private team
   marketplace** `intent-solutions-io/claude-plugins`, where the internal **`intent-brain`** plugin is
   published — that's how Jeremy's team (e.g. Ope) installs the brain.
-- **Backup/DR (`c5k.4`) — scope-complete & restore-tested (off-host R2 is the open tail).**
-  `~/bin/teamkb-backup.sh` now captures the full brain in one age-encrypted archive
+- **Backup/DR (`c5k.4`) — DONE: scope-complete, restore-tested, off-host live.**
+  `~/bin/teamkb-backup.sh` captures the full brain in one age-encrypted archive
   (`~/.teamkb/backups/teamkb-full-<UTC>.tar.zst.age`): Tier A (`teamkb.db` + `brain/.ico/state.db`,
   both quiesced via `VACUUM INTO`; `brain/raw/` + `brain/audit/` + `brain/spool/` + `spool/` +
   `tokens.json`) + Tier B (`brain/wiki/`, `feedback/`); derived dirs skipped. Encrypted to **two**
-  recipients (dev SOPS key + VPS host key) and gated on a per-run restore round-trip (both DBs
-  `integrity_check` + table-count + corpus/receipt presence on tmpfs). Daily systemd user timer
-  `teamkb-backup.timer` (04:30, after borg). Runbook + exact restore steps:
-  [`000-docs/006-AT-RNBK`](000-docs/006-AT-RNBK-brain-backup-and-restore-runbook.md). **Still open:**
-  off-host push — `TEAMKB_R2_REMOTE` (Cloudflare R2) is wired but unset, pending bucket/credential
-  provisioning; until then the encrypted archive lives only on the dev box.
+  recipients (dev SOPS key + VPS host key); gated on a per-run restore round-trip (both DBs
+  `integrity_check` + table-count + corpus/receipt presence on tmpfs). **Off-host is live:** every
+  run `rsync`s the `.age` to the VPS `intentsolutions:teamkb-backups` over the tailnet with a
+  `sha256` byte-match + remote retention — and the VPS can decrypt its own copy with the host key
+  (`/etc/intentsolutions/age.key`), DR-loop verified end-to-end (VPS is cold storage: `age`+`zstd`
+  but no `sqlite3`). Daily systemd user timer `teamkb-backup.timer` (04:30, after borg). Runbook +
+  restore steps: [`000-docs/006-AT-RNBK`](000-docs/006-AT-RNBK-brain-backup-and-restore-runbook.md).
+  Optional follow-up: a second off-host target on Cloudflare R2 (`TEAMKB_R2_REMOTE` wired; endpoint
+  provisioned, still needs an access key id + secret).
 
 ## The Architecture Thesis (why the README says what it says)
 

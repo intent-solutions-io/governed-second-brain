@@ -92,16 +92,22 @@ systemctl --user start teamkb-brain-api
 The derived dirs (`kb-export/`, `qmd-index/`) are intentionally absent after a restore — rebuild
 them from the restored corpus + DBs (re-index / re-export); they were never the source of truth.
 
-## Off-host status (the one remaining piece of c5k.4)
+## Off-host (LIVE — VPS over the tailnet)
 
-The archive is small (~13 MB) and **encrypted to the VPS key**, so the durable off-host unit is
-just that file. Two push targets are wired in the script:
+Every run pushes the encrypted archive off the dev box to the VPS `intentsolutions` over the
+tailnet (`TEAMKB_VPS_REMOTE=intentsolutions:teamkb-backups`, on by default): `rsync` the `.age`,
+verify the remote copy **byte-for-byte by `sha256`**, then prune the VPS to the newest
+`TEAMKB_BACKUP_RETAIN`. Non-fatal if the tailnet/VPS is unreachable — the local copy is retained
+and the next run re-pushes.
 
-- **Cloudflare R2** via `rclone` — set `TEAMKB_R2_REMOTE` (e.g. `r2:teamkb-backups`) once the
-  bucket + credentials exist. **Pending Jeremy's bucket/credential provisioning** — until then the
-  run logs `off-host push SKIPPED` and retains the local encrypted copy.
-- (alternative, no new creds) push the `.age` to the VPS over the tailnet — the VPS already holds a
-  decrypting key.
+This is a real DR site, not just a file drop: the archive is encrypted to the VPS host key
+(`age1csyjr…`) and the VPS holds the matching private key (`/etc/intentsolutions/age.key`,
+readable by the `intentsolutions` user via the `adm` group). **Verified end-to-end** — the VPS
+decrypts its own copy with the host key and the corpus (726 files) extracts cleanly. Note: the VPS
+has `age` + `zstd` but **not** `sqlite3`, so treat it as **cold storage** — decrypt there, then
+restore the DBs onto a brain host (which has `sqlite3`) per the restore procedure above.
 
-Until an off-host target is enabled, the backup is restore-tested and encrypted but lives only on
-the dev box; that residual single-host risk is the open tail of `c5k.4`.
+**R2 (optional second target — follow-up):** `TEAMKB_R2_REMOTE` + `rclone` is wired for a
+Cloudflare R2 bucket as a belt-and-suspenders second off-host. The R2 endpoint/account is
+provisioned; it still needs an access key id + secret to authenticate. Tracked as a follow-up; not
+required for `c5k.4` — the VPS already satisfies the off-host requirement.

@@ -60,10 +60,17 @@ and the correct backup/DR scope are **code-verified** in
   `jeremylongshore/governed-second-brain-plugin` (installable artifact for outsiders) vs the **private team
   marketplace** `intent-solutions-io/claude-plugins`, where the internal **`intent-brain`** plugin is
   published — that's how Jeremy's team (e.g. Ope) installs the brain.
-- **Backup/DR (`c5k.4`) is NOT done:** `~/bin/teamkb-backup.sh` currently snapshots only `teamkb.db` —
-  far too narrow. Correct scope = Tier A (`teamkb.db` + `brain/.ico/state.db` + `brain/raw/` +
-  `brain/audit/` + `brain/spool/`) + Tier B (`brain/wiki/`, `feedback/`); skip the derived dirs;
-  handle `tokens.json` via SOPS.
+- **Backup/DR (`c5k.4`) — scope-complete & restore-tested (off-host R2 is the open tail).**
+  `~/bin/teamkb-backup.sh` now captures the full brain in one age-encrypted archive
+  (`~/.teamkb/backups/teamkb-full-<UTC>.tar.zst.age`): Tier A (`teamkb.db` + `brain/.ico/state.db`,
+  both quiesced via `VACUUM INTO`; `brain/raw/` + `brain/audit/` + `brain/spool/` + `spool/` +
+  `tokens.json`) + Tier B (`brain/wiki/`, `feedback/`); derived dirs skipped. Encrypted to **two**
+  recipients (dev SOPS key + VPS host key) and gated on a per-run restore round-trip (both DBs
+  `integrity_check` + table-count + corpus/receipt presence on tmpfs). Daily systemd user timer
+  `teamkb-backup.timer` (04:30, after borg). Runbook + exact restore steps:
+  [`000-docs/006-AT-RNBK`](000-docs/006-AT-RNBK-brain-backup-and-restore-runbook.md). **Still open:**
+  off-host push — `TEAMKB_R2_REMOTE` (Cloudflare R2) is wired but unset, pending bucket/credential
+  provisioning; until then the encrypted archive lives only on the dev box.
 
 ## The Architecture Thesis (why the README says what it says)
 

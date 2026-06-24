@@ -68,10 +68,14 @@ and the correct backup/DR scope are **code-verified** in
   tailnet-bound) — **deployed live** on the team-server (`650.5` closed); (2) the **one unified plugin**
   (`governed-second-brain-plugin` v1.0.0, `650.1` closed) with two runtime modes dispatched by
   `TEAMKB_API_URL`: **local** (default, in-process `~/.teamkb`) and **team** (remote proxy to the live
-  brain over the tailnet with a per-user token). Same `brain_*` tool surface both ways; only the DATA +
-  `TEAMKB_API_URL` + token are private. What's left is **activation/publish, not architecture**: `650.2`
-  (point team mode at the live URL + per-user token activation), `650.3` (publish to the marketplaces),
-  `650.6` (API hardening: token expiry/rotation, anon health probe, dedicated tailnet VM).
+  brain over the tailnet with a per-user token). **Local mode exposes the FULL `brain_*` surface
+  in-process** (read: `brain_search` / `brain_status` / `brain_audit_verify`; write: `brain_capture` /
+  `brain_govern` / `brain_transition`); **team mode today proxies only the read tool `brain_search`** to
+  the remote brain (`src/remote-server.ts`) — the remote write path follows as the API + `650.2` mature.
+  Only the DATA + `TEAMKB_API_URL` + token are private. What's left is **activation/publish, not
+  architecture**: `650.2` (point team mode at the live URL + per-user token activation, extend the remote
+  surface beyond search), `650.3` (publish to the marketplaces), `650.6` (API hardening: token
+  expiry/rotation, anon health probe, dedicated tailnet VM).
 - **Cloudflare R2 is NOT the bridge — it is off-host BACKUP only (`c5k.6`).** The bridge is an
   authenticated, governed HTTP API (above); R2 is dumb blob storage with no auth, no governed write-path,
   no live query proxy — wrong tool for the bridge. The genuinely-deferred **distributed** model (each

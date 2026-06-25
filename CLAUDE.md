@@ -128,8 +128,9 @@ and the correct backup/DR scope are **code-verified** in
   (`/etc/intentsolutions/age.key`), DR-loop verified end-to-end (VPS is cold storage: `age`+`zstd`
   but no `sqlite3`). Daily systemd user timer `teamkb-backup.timer` (04:30, after borg). Runbook +
   restore steps: [`000-docs/006-AT-RNBK`](000-docs/006-AT-RNBK-brain-backup-and-restore-runbook.md).
-  Optional follow-up: a second off-host target on Cloudflare R2 (`TEAMKB_R2_REMOTE` wired; endpoint
-  provisioned, still needs an access key id + secret).
+  Second off-host target — Cloudflare R2 (`c5k.6`) — **LIVE (2026-06-25)**: each run also pushes the
+  `.age` to `r2-teamkb:teamkb-backups`; S3 keys in runbook `secrets.prod.sops.yaml` (`r2_teamkb_*`) +
+  `rclone.conf`. R2 is **backup only** (encrypted blobs), **not** the team bridge — see line 113.
 
 ## The Architecture Thesis (why the README says what it says)
 

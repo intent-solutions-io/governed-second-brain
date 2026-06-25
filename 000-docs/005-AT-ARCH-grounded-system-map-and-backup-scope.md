@@ -152,10 +152,12 @@ populated) are source-of-truth; `memory_links`, `export_state`, `schema_migratio
   storage: `age` + `zstd` present, no `sqlite3`).
 - **Daily** systemd user timer `teamkb-backup.timer` (04:30, after borg).
 
-**Optional follow-up (not blocking `c5k.4`):** a *second* off-host target on Cloudflare R2
-(`TEAMKB_R2_REMOTE` wired in the script; endpoint provisioned, still needs an access key id + secret)
-— tracked as `compile-then-govern-c5k.6`. The R2 access key/secret were **never captured on the box**
-(see the secrets inventory — Track D).
+**Second off-host target — Cloudflare R2 (`c5k.6`) — LIVE as of 2026-06-25.** `~/bin/teamkb-backup.sh`
+now also pushes each `.age` to `r2-teamkb:teamkb-backups` (rclone S3; default `TEAMKB_R2_REMOTE`). The
+S3 access key id + secret are stored in the runbook `secrets.prod.sops.yaml` (keys `r2_teamkb_*`,
+age-encrypted) and materialised into `~/.config/rclone/rclone.conf` for runtime; bucket created;
+first push verified. **R2 is BACKUP only** — encrypted blobs for disaster recovery, *not* the team
+bridge (the bridge is the INTKB tailnet API + the unified plugin's team mode; see §2 / `007-AT-SMAP`).
 
 **Recovery playbook:**
 1. Decrypt + extract the latest `.age` (with either the dev-box or VPS age key).

@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The **umbrella / landing repo** for **Governed Second Brain** — the local-first knowledge stack
 built on the *compile, then govern* architecture. (Renamed from `compile-then-govern` on
 2026-06-16; the GitHub repo is now `intent-solutions-io/governed-second-brain` and the old URL
-auto-redirects. The local working directory is still `compile-then-govern/`.) It contains
+auto-redirects. The local working directory was renamed to match — it is
+`~/000-projects/governed-second-brain/` (the bead prefix stays `compile-then-govern`).) It contains
 **ecosystem-level documentation only** — the landing README, governance files
 (`CONTRIBUTING.md`/`SECURITY.md`/`LICENSE`), `assets/` (banner + social-card), and the program-level
 beads tracker. **No application code lives here.**
@@ -28,6 +29,37 @@ product page.
 
 Program-level beads + the GitHub tracking issue (#1, epic `compile-then-govern-qy7`) live **here** — the
 umbrella is the program tracker. Plugin build + architecture details live in the plugin repo's CLAUDE.md.
+
+## The working surface — start here (`gsb` + the topology map)
+
+This umbrella is the **single working surface** for the whole stack — the one place that answers
+"which repo / where's the brain / where's the key" without re-deriving. Two artifacts make that real:
+
+- **[`000-docs/007-AT-SMAP`](000-docs/007-AT-SMAP-repo-topology-and-working-surface.md)** — the
+  canonical repo-topology map (Mermaid diagram + the exact local↔remote table + the doctrine).
+- **[`bin/gsb`](bin/gsb)** — cross-repo helper over [`repos.yml`](repos.yml): `gsb map` (topology +
+  per-repo branch/dirty), `gsb status` (branch + dirty + ahead/behind across all), `gsb sync` (clone
+  any missing sub-repo to its canonical path, `pull --rebase` the rest). Manifest + helper, **not**
+  git submodules — the 5 repos stay independent (own CI / releases / visibility).
+
+**The exact local↔remote map** (5 repos + 1 live-data dir across 2 orgs; local dir name == remote
+repo name for all of them):
+
+| Local dir (`~/000-projects/`) | GitHub remote | Org | Vis | Role |
+|---|---|---|---|---|
+| `governed-second-brain/` | `intent-solutions-io/governed-second-brain` | company | public | **umbrella (here)** |
+| `intentional-cognition-os/` | `jeremylongshore/intentional-cognition-os` | personal | public | ICO · compile engine |
+| `qmd-team-intent-kb/` | `jeremylongshore/qmd-team-intent-kb` | personal | public | INTKB · govern engine |
+| `governed-second-brain-plugin/` | `jeremylongshore/governed-second-brain-plugin` | personal | public | public unified plugin (local + team modes) |
+| `team-intent-claude-plugins/` | `intent-solutions-io/team-intent-claude-plugins` | company | private | private team marketplace (renamed from `claude-plugins` on 2026-06-24) |
+| `~/.teamkb/` | *(not a repo)* | — | — | the live brain data (one dir; backed up by `~/bin/teamkb-backup.sh`) |
+
+**`~/000-projects/second-brain/` is NOT part of this** — it was a dead local-only scaffold (no
+remote, empty `.gitkeep` dirs) that also held a stale snapshot of the `~/000-projects/.beads/`
+store. Deleted 2026-06-24 (its 7 stray `bd_000-projects-704w` beads were rescued into the canonical
+store first). The brain is `~/.teamkb/`, never `second-brain/`. The adjacent
+`claude-code-slack-channel` / `agent-governance-plane` / `claude-code-plugins-plus-skills` repos are a
+**separate** ecosystem — not under this umbrella, not in `repos.yml`.
 
 ## Where the Code Actually Lives
 
@@ -51,14 +83,16 @@ and the correct backup/DR scope are **code-verified** in
 [`000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md`](000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md)
 (start there — don't re-derive from scratch; also the auto-memory `governed-brain-architecture-and-backup-scope`). Key facts:
 
-- **The whole live brain is ONE directory on the dev box (itself a VPS): `~/.teamkb/` (~48–56 MB).**
+- **The whole live brain is ONE directory on the dev box (itself a VPS): `~/.teamkb/`** (~130 MB and
+  growing; exact live size + row counts in [`005-AT-ARCH` §0](000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md), auto-updated each backup).
   The production VPS `intentsolutions` holds **no brain** (verified). Two SQLite DBs: ICO
   `brain/.ico/state.db` (compile) + INTKB `teamkb.db` (govern). Plus `brain/raw/` (corpus = source of
   truth), `brain/wiki/` (compiled Markdown, expensive-derived), `brain/audit/` + `audit_events`
   (hash-chained receipts), `kb-export/` + `qmd-index/` (cheaply derived), `tokens.json` (a **SECRET** → SOPS).
 - **Distribution — two channels, don't conflate:** the **public plugin**
   `jeremylongshore/governed-second-brain-plugin` (the unified installable artifact; its *local mode* is the
-  outsider showcase) vs the **private team marketplace** `intent-solutions-io/claude-plugins`. The same
+  outsider showcase) vs the **private team marketplace** `intent-solutions-io/team-intent-claude-plugins`
+  (renamed from `claude-plugins` on 2026-06-24). The same
   unified plugin in **team mode** is how Jeremy's team (e.g. Ope) reaches the one remote brain; the old
   standalone `intent-brain` plugin is being folded into that team mode and retired (`650.4`).
 - **Local↔team bridge — ALREADY BUILT. It is the single remote brain (ratified decision D27,
@@ -94,8 +128,9 @@ and the correct backup/DR scope are **code-verified** in
   (`/etc/intentsolutions/age.key`), DR-loop verified end-to-end (VPS is cold storage: `age`+`zstd`
   but no `sqlite3`). Daily systemd user timer `teamkb-backup.timer` (04:30, after borg). Runbook +
   restore steps: [`000-docs/006-AT-RNBK`](000-docs/006-AT-RNBK-brain-backup-and-restore-runbook.md).
-  Optional follow-up: a second off-host target on Cloudflare R2 (`TEAMKB_R2_REMOTE` wired; endpoint
-  provisioned, still needs an access key id + secret).
+  Second off-host target — Cloudflare R2 (`c5k.6`) — **LIVE (2026-06-25)**: each run also pushes the
+  `.age` to `r2-teamkb:teamkb-backups`; S3 keys in runbook `secrets.prod.sops.yaml` (`r2_teamkb_*`) +
+  `rclone.conf`. R2 is **backup only** (encrypted blobs), **not** the team bridge — see line 113.
 
 ## The Architecture Thesis (why the README says what it says)
 

@@ -66,8 +66,14 @@ sz_kbx="$(sz "$TEAMKB_HOME/kb-export")"
 sz_qmd="$(sz "$TEAMKB_HOME/qmd-index")"
 sz_total="$(sz "$TEAMKB_HOME")"
 
-# latest off-host-capable archive + its mtime
-latest_arc="$(ls -1t "$TEAMKB_HOME"/backups/teamkb-full-*.tar.zst.age 2>/dev/null | head -1 || true)"
+# latest off-host-capable archive + its mtime. Filenames are teamkb-full-<ISO8601>Z.…,
+# so lexical max == newest — pick it with a glob (no `ls` parsing).
+latest_arc=""
+shopt -s nullglob
+for f in "$TEAMKB_HOME"/backups/teamkb-full-*.tar.zst.age; do
+  [[ "$f" > "$latest_arc" ]] && latest_arc="$f"
+done
+shopt -u nullglob
 if [ -n "$latest_arc" ]; then
   bk="\`$(basename "$latest_arc")\` ($(date -u -r "$latest_arc" +%FT%TZ 2>/dev/null || echo '?'))"
 else
@@ -100,14 +106,14 @@ trap 'rm -f "$block"' EXIT
 BLOCK="$block" DOC="$DOC" /usr/bin/env python3 - <<'PY'
 import os, re, pathlib
 doc = pathlib.Path(os.environ["DOC"])
-inner = pathlib.Path(os.environ["BLOCK"]).read_text().rstrip("\n")
-text = doc.read_text()
+inner = pathlib.Path(os.environ["BLOCK"]).read_text(encoding="utf-8").rstrip("\n")
+text = doc.read_text(encoding="utf-8")
 pat = re.compile(r"(<!-- AUTOGEN:live-stats[^\n]*-->\n).*?(\n<!-- /AUTOGEN:live-stats -->)", re.DOTALL)
 if not pat.search(text):
     raise SystemExit(f"teamkb-systemmap: AUTOGEN:live-stats fences not found in {doc}")
 new = pat.sub(lambda m: m.group(1) + inner + m.group(2), text)
 if new != text:
-    doc.write_text(new)
+    doc.write_text(new, encoding="utf-8")
     print(f"teamkb-systemmap: updated live-stats block in {doc.name}")
 else:
     print(f"teamkb-systemmap: live-stats block already current in {doc.name}")

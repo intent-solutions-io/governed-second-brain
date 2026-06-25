@@ -44,7 +44,7 @@ def blue(s): return _c("34", s)
 def load_manifest() -> dict:
     if not MANIFEST.exists():
         sys.exit(f"gsb: manifest not found: {MANIFEST}")
-    with MANIFEST.open() as fh:
+    with MANIFEST.open(encoding="utf-8") as fh:
         return yaml.safe_load(fh)
 
 
@@ -73,7 +73,8 @@ def repo_state(path: Path) -> dict:
           "branch": "-", "dirty": False, "ahead": 0, "behind": 0}
     if not st["present"]:
         return st
-    _, st["branch"] = git(path, "rev-parse", "--abbrev-ref", "HEAD")
+    rc, out = git(path, "rev-parse", "--abbrev-ref", "HEAD")
+    st["branch"] = out if rc == 0 else "?"
     rc, out = git(path, "status", "--porcelain")
     st["dirty"] = rc == 0 and bool(out)
     rc, out = git(path, "rev-list", "--left-right", "--count", "@{u}...HEAD")
@@ -131,7 +132,10 @@ def cmd_status(m: dict) -> int:
         rows.append((r["name"], st["branch"], state, ab))
     # plain widths (strip ansi for alignment)
     import re
-    strip = lambda s: re.sub(r"\033\[[0-9;]*m", "", s)
+
+    def strip(s: str) -> str:
+        return re.sub(r"\033\[[0-9;]*m", "", s)
+
     widths = [max(len(strip(row[i])) for row in rows) for i in range(4)]
     for i, row in enumerate(rows):
         cells = []
@@ -146,20 +150,19 @@ def cmd_status(m: dict) -> int:
 def cmd_sync(m: dict) -> int:
     base = base_dir(m)
     base.mkdir(parents=True, exist_ok=True)
-    rc_all = 0
+    failed = False
     for r in m["repos"]:
         path = repo_path(m, r)
         if not (path / ".git").exists():
             print(f"{yellow('clone')}  {r['name']} → {path}")
             rc = subprocess.run(["git", "clone", r["remote"], str(path)]).returncode
-            rc_all |= rc
         else:
             print(f"{green('pull ')}  {r['name']}")
             rc, out = git(path, "pull", "--rebase")
             if rc != 0:
                 print(dim("   " + out.replace("\n", "\n   ")))
-            rc_all |= rc
-    return rc_all
+        failed = failed or rc != 0
+    return 1 if failed else 0
 
 
 def cmd_list(m: dict) -> int:

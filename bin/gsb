@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""gsb — Governed Second Brain cross-repo helper.
+
+The umbrella repo is the single working surface. This helper reads `repos.yml`
+(the topology manifest, one dir up from this script) and operates across every
+sub-repo at once, so a session never has to hunt for "which repo / where is it".
+
+    gsb map      topology diagram + per-repo branch / dirty state
+    gsb status   branch + dirty + ahead/behind across all repos (compact table)
+    gsb sync     clone any missing sub-repo to its canonical path; pull --rebase the rest
+    gsb list     print the manifest rows (name · path · remote · vis · role)
+    gsb help     this text
+
+The five repos stay independent (own CI / releases / visibility). This is an
+orchestration layer over them, NOT git submodules.
+"""
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ModuleNotFoundError:
+    sys.exit("gsb: PyYAML not found — `pip install pyyaml` (or use the system python that has it).")
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+MANIFEST = SCRIPT_DIR.parent / "repos.yml"
+
+# ── ansi (only when stdout is a tty) ──────────────────────────────────────────
+_TTY = sys.stdout.isatty()
+def _c(code: str, s: str) -> str:
+    return f"\033[{code}m{s}\033[0m" if _TTY else s
+def bold(s): return _c("1", s)
+def dim(s): return _c("2", s)
+def green(s): return _c("32", s)
+def yellow(s): return _c("33", s)
+def red(s): return _c("31", s)
+def blue(s): return _c("34", s)
+
+
+def load_manifest() -> dict:
+    if not MANIFEST.exists():
+        sys.exit(f"gsb: manifest not found: {MANIFEST}")
+    with MANIFEST.open() as fh:
+        return yaml.safe_load(fh)
+
+
+def base_dir(m: dict) -> Path:
+    return Path(os.path.expanduser(m.get("base", "~/000-projects")))
+
+
+def repo_path(m: dict, repo: dict) -> Path:
+    return base_dir(m) / repo["local_path"]
+
+
+def git(path: Path, *args: str) -> tuple[int, str]:
+    try:
+        p = subprocess.run(
+            ["git", "-C", str(path), *args],
+            capture_output=True, text=True, timeout=30,
+        )
+        return p.returncode, (p.stdout or p.stderr).strip()
+    except Exception as e:  # noqa: BLE001
+        return 1, str(e)
+
+
+def repo_state(path: Path) -> dict:
+    """branch, dirty, ahead, behind, present — best-effort, never raises."""
+    st = {"present": path.is_dir() and (path / ".git").exists(),
+          "branch": "-", "dirty": False, "ahead": 0, "behind": 0}
+    if not st["present"]:
+        return st
+    _, st["branch"] = git(path, "rev-parse", "--abbrev-ref", "HEAD")
+    rc, out = git(path, "status", "--porcelain")
+    st["dirty"] = rc == 0 and bool(out)
+    rc, out = git(path, "rev-list", "--left-right", "--count", "@{u}...HEAD")
+    if rc == 0 and "\t" in out:
+        b, a = out.split("\t")[:2]
+        st["behind"], st["ahead"] = int(b), int(a)
+    return st
+
+
+def _status_cell(st: dict) -> str:
+    if not st["present"]:
+        return red("MISSING")
+    bits = [st["branch"]]
+    if st["dirty"]:
+        bits.append(yellow("dirty"))
+    if st["ahead"]:
+        bits.append(green(f"↑{st['ahead']}"))
+    if st["behind"]:
+        bits.append(red(f"↓{st['behind']}"))
+    if not st["dirty"] and not st["ahead"] and not st["behind"]:
+        bits.append(green("clean"))
+    return " ".join(bits)
+
+
+def cmd_map(m: dict) -> int:
+    print(bold("Governed Second Brain — repo topology"))
+    print(dim("(canonical map: 000-docs/007-AT-SMAP · data map: 000-docs/005-AT-ARCH)"))
+    print()
+    print(f"  {bold('intent-solutions-io')} (company)        {bold('jeremylongshore')} (personal)")
+    print("  ─────────────────────────────        ──────────────────────────────")
+    print(f"  ● {blue('governed-second-brain')}  ◀ HERE     ● intentional-cognition-os  (ICO · compile)")
+    print("    = UMBRELLA (this surface)          ● qmd-team-intent-kb        (INTKB · govern)")
+    print("  ● team-intent-claude-plugins         ● governed-second-brain-plugin (unified plugin)")
+    print("    = PRIVATE team marketplace")
+    print()
+    print(f"  LIVE DATA: {green('~/.teamkb')} (not a repo) — the compiled + governed brain")
+    print()
+    print(bold("  Per-repo state:"))
+    name_w = max(len(r["name"]) for r in m["repos"])
+    for r in m["repos"]:
+        st = repo_state(repo_path(m, r))
+        print(f"    {r['name']:<{name_w}}  {dim(r['layer']):<22}  {_status_cell(st)}")
+    return 0
+
+
+def cmd_status(m: dict) -> int:
+    rows = [("REPO", "BRANCH", "STATE", "AHEAD/BEHIND")]
+    for r in m["repos"]:
+        st = repo_state(repo_path(m, r))
+        if not st["present"]:
+            rows.append((r["name"], red("MISSING"), "-", "-"))
+            continue
+        state = yellow("dirty") if st["dirty"] else green("clean")
+        ab = f"↑{st['ahead']} ↓{st['behind']}" if (st["ahead"] or st["behind"]) else "-"
+        rows.append((r["name"], st["branch"], state, ab))
+    # plain widths (strip ansi for alignment)
+    import re
+    strip = lambda s: re.sub(r"\033\[[0-9;]*m", "", s)
+    widths = [max(len(strip(row[i])) for row in rows) for i in range(4)]
+    for i, row in enumerate(rows):
+        cells = []
+        for j, cell in enumerate(row):
+            pad = widths[j] - len(strip(cell))
+            cells.append(cell + " " * pad)
+        line = "  ".join(cells)
+        print(bold(line) if i == 0 else line)
+    return 0
+
+
+def cmd_sync(m: dict) -> int:
+    base = base_dir(m)
+    base.mkdir(parents=True, exist_ok=True)
+    rc_all = 0
+    for r in m["repos"]:
+        path = repo_path(m, r)
+        if not (path / ".git").exists():
+            print(f"{yellow('clone')}  {r['name']} → {path}")
+            rc = subprocess.run(["git", "clone", r["remote"], str(path)]).returncode
+            rc_all |= rc
+        else:
+            print(f"{green('pull ')}  {r['name']}")
+            rc, out = git(path, "pull", "--rebase")
+            if rc != 0:
+                print(dim("   " + out.replace("\n", "\n   ")))
+            rc_all |= rc
+    return rc_all
+
+
+def cmd_list(m: dict) -> int:
+    for r in m["repos"]:
+        vis = (green if r["visibility"] == "public" else yellow)(r["visibility"])
+        print(f"{bold(r['name'])}  [{vis}]  {dim(r['org'])}")
+        print(f"  path:   {repo_path(m, r)}")
+        print(f"  remote: {r['remote']}")
+        print(f"  role:   {r['role']}")
+        print()
+    for d in m.get("data", []):
+        print(f"{bold(d['name'])}  [{green('data')}]  {dim(os.path.expanduser(d['local_path']))}")
+        print(f"  role:   {d['role']}")
+        print()
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    cmd = (argv[0] if argv else "help").lower()
+    if cmd in ("help", "-h", "--help"):
+        print(__doc__)
+        return 0
+    m = load_manifest()
+    dispatch = {"map": cmd_map, "status": cmd_status, "sync": cmd_sync, "list": cmd_list}
+    fn = dispatch.get(cmd)
+    if fn is None:
+        sys.stderr.write(f"gsb: unknown command '{cmd}'\n\n{__doc__}")
+        return 2
+    return fn(m)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

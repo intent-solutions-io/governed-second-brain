@@ -18,7 +18,7 @@ repos + tailnet — the exact headless-`claude -p` pattern `/blog-backfill` uses
 fail-loud `EXIT` trap, idempotency (skips if an audit record for the date already exists), ntfy + email
 delivery of the digest, and consecutive-failure escalation. It passes the brain MCP explicitly:
 
-```
+```bash
 claude -p '/teamkb-compile <DATE> <NEXT> --<mode>' \
   --mcp-config ~/.claude/skills/teamkb-compile/scripts/brain-mcp-config.json \
   --strict-mcp-config --dangerously-skip-permissions

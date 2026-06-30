@@ -12,6 +12,10 @@
 # Usage: gather-signals.sh <DATE> <NEXT_DATE>     (YYYY-MM-DD ; NEXT_DATE exclusive-end-of-day)
 
 set -uo pipefail
+# Transcript + signal material can contain secrets that surfaced during debugging
+# (the scanner warns about this). Restrict everything we write under /tmp to the
+# owner so it can't land world-readable on a multi-user box.
+umask 077
 
 DATE="${1:?usage: gather-signals.sh <DATE> <NEXT_DATE>}"
 NEXT_DATE="${2:?usage: gather-signals.sh <DATE> <NEXT_DATE>}"
@@ -20,6 +24,7 @@ PROJECTS_ROOT="${TEAMKB_COMPILE_PROJECTS_ROOT:-$HOME/000-projects}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRATCH="/tmp/teamkb-compile"
 mkdir -p "$SCRATCH"
+chmod 700 "$SCRATCH" 2>/dev/null || true   # tighten even if it pre-existed loose
 
 SINCE="$DATE 00:00:00"
 UNTIL="$NEXT_DATE 00:00:00"

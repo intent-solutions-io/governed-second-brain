@@ -13,6 +13,9 @@
 # (here or in the crontab line) once the digests look right.
 
 set -uo pipefail
+# Scratch files (signal doc, transcripts, digest, candidates) can contain
+# secret-bearing transcript material — keep everything we write owner-only.
+umask 077
 
 # ── Config ───────────────────────────────────────────────────────────────────
 SKILL_DIR=$HOME/.claude/skills/teamkb-compile
@@ -31,6 +34,7 @@ MODE_STATE="$LOG_DIR/mode"                      # persisted, self-managed mode
 SOAK_NIGHTS="${TEAMKB_COMPILE_SOAK_NIGHTS:-3}"  # clean digest nights before auto-graduation
 
 mkdir -p "$LOG_DIR" "$SCRATCH"
+chmod 700 "$SCRATCH" 2>/dev/null || true   # tighten even if it pre-existed loose
 LOG="$LOG_DIR/run-${TARGET}.log"
 DIGEST="$SCRATCH/digest-${TARGET}.md"
 

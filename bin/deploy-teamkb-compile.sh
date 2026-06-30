@@ -14,6 +14,9 @@ WRAP_SRC="$REPO_DIR/bin/teamkb-compile-daily.sh"
 WRAP_DST="$HOME/bin/teamkb-compile-daily.sh"
 
 mkdir -p "$SKILL_DST" "$HOME/bin"
+# Cron opens the `>> .../cron.log` redirect BEFORE the wrapper runs, so the state
+# dir must exist on a fresh install or the very first cron tick fails silently.
+mkdir -p "$HOME/.local/state/teamkb-compile-daily"
 
 # Sync the skill, but never clobber the runtime audit log.
 rsync -a --delete \

@@ -15,14 +15,14 @@
 set -uo pipefail
 
 # ── Config ───────────────────────────────────────────────────────────────────
-SKILL_DIR=/home/jeremy/.claude/skills/teamkb-compile
+SKILL_DIR=$HOME/.claude/skills/teamkb-compile
 MCP_CONFIG="$SKILL_DIR/scripts/brain-mcp-config.json"
 DECISIONS="$SKILL_DIR/methodology/decisions.jsonl"
-EMAIL_SCRIPT=/home/jeremy/.claude/skills/email/scripts/send-email.cjs
+EMAIL_SCRIPT=$HOME/.claude/skills/email/scripts/send-email.cjs
 EMAIL_TO=jeremy@intentsolutions.io
 SCRATCH=/tmp/teamkb-compile
-LOG_DIR=/home/jeremy/.local/state/teamkb-compile-daily
-NTFY_TOPIC_FILE=/home/jeremy/.ntfy-topic
+LOG_DIR=$HOME/.local/state/teamkb-compile-daily
+NTFY_TOPIC_FILE=$HOME/.ntfy-topic
 
 TIMEOUT_SECS="${TEAMKB_COMPILE_TIMEOUT:-1800}" # 30 min hard ceiling
 TARGET="${TEAMKB_COMPILE_DATE:-$(date -d 'yesterday' +%Y-%m-%d)}"
@@ -59,7 +59,9 @@ GRADUATED=0; CLEAN_DIGESTS="n/a"
 if [ "$MODE" = "digest" ] && [ "$MODE_SRC" != "env-override" ]; then
   CLEAN_DIGESTS=$(grep -cE '"mode"[[:space:]]*:[[:space:]]*"digest"' "$DECISIONS" 2>/dev/null) || CLEAN_DIGESTS=0
   if [ "$CLEAN_DIGESTS" -ge "$SOAK_NIGHTS" ]; then
-    MODE="auto"; GRADUATED=1; echo auto > "$MODE_STATE"
+    MODE="auto"; GRADUATED=1
+    # Persist the one-way graduation — but never as a side effect of a dry run.
+    [ -z "${TEAMKB_COMPILE_DRYRUN:-}" ] && echo auto > "$MODE_STATE"
   fi
 fi
 

@@ -165,7 +165,7 @@ def scan_all_projects(start_ts: datetime, end_ts: datetime) -> dict:
     """Scan all project directories, return {project_name: {date_str: [entries]}}."""
     results = defaultdict(lambda: defaultdict(list))
 
-    if not PROJECTS_DIR.exists():
+    if not PROJECTS_DIR.is_dir():
         print(f"Projects directory not found: {PROJECTS_DIR}", file=sys.stderr)
         return results
 

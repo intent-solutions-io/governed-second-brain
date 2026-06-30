@@ -16,7 +16,7 @@ set -uo pipefail
 DATE="${1:?usage: gather-signals.sh <DATE> <NEXT_DATE>}"
 NEXT_DATE="${2:?usage: gather-signals.sh <DATE> <NEXT_DATE>}"
 
-PROJECTS_ROOT="${TEAMKB_COMPILE_PROJECTS_ROOT:-/home/jeremy/000-projects}"
+PROJECTS_ROOT="${TEAMKB_COMPILE_PROJECTS_ROOT:-$HOME/000-projects}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRATCH="/tmp/teamkb-compile"
 mkdir -p "$SCRATCH"
@@ -38,6 +38,7 @@ ACTIVE_REPOS=()
 
 echo "===== GIT COMMITS (subject + body, by repo) ====="
 for dir in "$PROJECTS_ROOT"/*/; do
+  [ -d "$dir" ] || continue          # glob didn't expand (no subdirs) → skip the literal
   [ -d "$dir/.git" ] || continue
   commits=$(git -C "$dir" log --since="$SINCE" --until="$UNTIL" \
               --format='%h %an  %s%n%b' 2>/dev/null | head -n "$COMMIT_BODY_MAX_LINES")
@@ -80,6 +81,7 @@ echo "===== CLOSED BEADS (with close reasons) ====="
 bead_found=0
 # Per-repo beads + the umbrella/home store.
 for dir in "$PROJECTS_ROOT"/*/ "$PROJECTS_ROOT"; do
+  [ -d "$dir" ] || continue          # glob didn't expand → skip the literal
   [ -d "$dir/.beads" ] || continue
   # Drop bd's transient upgrade/doctor nag lines that print to stdout.
   closed=$(bd list -C "$dir" --status closed --closed-after "$DATE" --closed-before "$NEXT_DATE" \

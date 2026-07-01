@@ -60,9 +60,9 @@ def git(path: Path, *args: str) -> tuple[int, str]:
     try:
         p = subprocess.run(
             ["git", "-C", str(path), *args],
-            capture_output=True, text=True, timeout=30,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30,
         )
-        return p.returncode, (p.stdout or p.stderr).strip()
+        return p.returncode, p.stdout.strip()
     except Exception as e:  # noqa: BLE001
         return 1, str(e)
 
@@ -74,7 +74,7 @@ def repo_state(path: Path) -> dict:
     if not st["present"]:
         return st
     rc, out = git(path, "rev-parse", "--abbrev-ref", "HEAD")
-    st["branch"] = out if rc == 0 else "?"
+    st["branch"] = out if rc == 0 else "-"
     rc, out = git(path, "status", "--porcelain")
     st["dirty"] = rc == 0 and bool(out)
     rc, out = git(path, "rev-list", "--left-right", "--count", "@{u}...HEAD")
@@ -103,20 +103,38 @@ def cmd_map(m: dict) -> int:
     print(bold("Governed Second Brain — repo topology"))
     print(dim("(canonical map: 000-docs/007-AT-SMAP · data map: 000-docs/005-AT-ARCH)"))
     print()
-    print(f"  {bold('intent-solutions-io')} (company)        {bold('jeremylongshore')} (personal)")
-    print("  ─────────────────────────────        ──────────────────────────────")
-    print(f"  ● {blue('governed-second-brain')}  ◀ HERE     ● intentional-cognition-os  (ICO · compile)")
-    print("    = UMBRELLA (this surface)          ● qmd-team-intent-kb        (INTKB · govern)")
-    print("  ● team-intent-claude-plugins         ● governed-second-brain-plugin (unified plugin)")
-    print("    = PRIVATE team marketplace")
-    print()
-    print(f"  LIVE DATA: {green('~/.teamkb')} (not a repo) — the compiled + governed brain")
+    # Topology rendered FROM repos.yml (single source of truth) — a rename / add /
+    # owner-move in the manifest flows through here; nothing about repos is hardcoded.
+    here = SCRIPT_DIR.parent  # the umbrella repo dir (== this repo's local_path)
+    repos = m["repos"]
+    orgs: dict[str, list[dict]] = {}
+    for r in repos:
+        orgs.setdefault(r.get("org", "—"), []).append(r)
+    for org, rs in orgs.items():
+        print(f"  {bold(org)}")
+        print("  " + "─" * max(len(org), 20))
+        name_w = max(len(r["name"]) for r in rs)
+        for r in rs:
+            is_here = repo_path(m, r).resolve() == here.resolve()
+            marker = "  ◀ HERE" if is_here else ""
+            name = blue(r["name"]) if is_here else r["name"]
+            pad = " " * (name_w - len(r["name"]))
+            layer = r.get("layer", "")
+            role = r.get("role", "")
+            print(f"    ● {name}{pad}  {dim(layer):<12}{marker}")
+            if role:
+                print(f"      {dim(role)}")
+        print()
+    for d in m.get("data", []):
+        loc = green(os.path.expanduser(d.get("local_path", "")))
+        print(f"  LIVE DATA: {loc} (not a repo) — {d.get('role', '')}")
     print()
     print(bold("  Per-repo state:"))
-    name_w = max(len(r["name"]) for r in m["repos"])
-    for r in m["repos"]:
+    name_w = max(len(r["name"]) for r in repos)
+    layer_w = max((len(r.get("layer", "")) for r in repos), default=0)
+    for r in repos:
         st = repo_state(repo_path(m, r))
-        print(f"    {r['name']:<{name_w}}  {dim(r['layer']):<22}  {_status_cell(st)}")
+        print(f"    {r['name']:<{name_w}}  {dim(r.get('layer', '')):<{layer_w}}  {_status_cell(st)}")
     return 0
 
 

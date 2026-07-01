@@ -9,15 +9,18 @@ built on the *compile, then govern* architecture. (Renamed from `compile-then-go
 2026-06-16; the GitHub repo is now `intent-solutions-io/governed-second-brain` and the old URL
 auto-redirects. The local working directory was renamed to match — it is
 `~/000-projects/governed-second-brain/` (the bead prefix stays `compile-then-govern`).) It contains
-**ecosystem-level documentation only** — the landing README, governance files
-(`CONTRIBUTING.md`/`SECURITY.md`/`LICENSE`), `assets/` (banner + social-card), and the program-level
-beads tracker. **No application code lives here.**
+**ecosystem-level documentation plus the cross-repo working-surface helpers** — the landing README,
+governance files (`CONTRIBUTING.md`/`SECURITY.md`/`LICENSE`), `assets/` (banner + social-card), the
+program-level beads tracker, the topology manifest [`repos.yml`](repos.yml), and the `bin/` helpers
+([`gsb`](bin/gsb) + [`teamkb-systemmap.sh`](bin/teamkb-systemmap.sh)). **No application code lives
+here** — the `bin/` scripts are orchestration/mapping over the sub-repos, not the product.
 
 **The plugin moved out (2026-06-16).** The installable **Governed Second Brain plugin** now lives in
 its own personal repo, **[`jeremylongshore/governed-second-brain-plugin`](https://github.com/jeremylongshore/governed-second-brain-plugin)**.
 This company-org repo is the **umbrella / landing**: the thesis, the competitive teardown, and the map
-that *points at* the plugin + the engines. The single deliverable here is the README — treat it as the
-product page.
+that *points at* the plugin + the engines. The README is the primary deliverable — treat it as the
+product page — alongside the working-surface tooling (`repos.yml` + `bin/gsb` + `bin/teamkb-systemmap.sh`)
+that makes the umbrella the one place to operate the whole stack from.
 
 **Repo map:**
 

@@ -29,6 +29,10 @@ FIND=/usr/bin/find
 
 command -v sqlite3 >/dev/null || { echo "teamkb-systemmap: sqlite3 not on PATH" >&2; exit 1; }
 [ -f "$DOC" ] || { echo "teamkb-systemmap: target doc not found: $DOC" >&2; exit 1; }
+# Fail loud if the live brain isn't present — a "grounded" snapshot must never
+# succeed with ?/‑ placeholders for missing DBs (that would silently ship a lie).
+[ -f "$DB" ]     || { echo "teamkb-systemmap: INTKB DB not found: $DB" >&2; exit 1; }
+[ -f "$ICO_DB" ] || { echo "teamkb-systemmap: ICO DB not found: $ICO_DB" >&2; exit 1; }
 
 # sqlite helper — empty string on any error (table absent, locked, etc.)
 q() { sqlite3 "$DB" "$1" 2>/dev/null || true; }

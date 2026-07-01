@@ -27,7 +27,7 @@ flowchart TB
     INTKB["<b>qmd-team-intent-kb</b> (INTKB)<br/>GOVERN engine"]
     PLUG["<b>governed-second-brain-plugin</b><br/>PUBLIC unified plugin<br/>local + team runtime modes"]
   end
-  DATA[("<b>~/.teamkb</b> — NOT a repo<br/>the live compiled + governed brain<br/>2,054 governed memories · 2,497 wiki pages<br/>backed up by teamkb-backup.sh")]
+  DATA[("<b>~/.teamkb</b> — NOT a repo<br/>the live compiled + governed brain<br/>governed memories + wiki pages (live counts in 005-AT-ARCH §0)<br/>backed up by teamkb-backup.sh")]
   CRUFT["second-brain/ — ✗ DELETED<br/>dead local-only scaffold (no remote)"]
 
   UMB -. points at .-> ICO

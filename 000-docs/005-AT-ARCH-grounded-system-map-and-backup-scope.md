@@ -55,7 +55,7 @@ _Snapshot 2026-06-25T03:26:05Z · auto-updated by [`bin/teamkb-systemmap.sh`](..
 | `~/.teamkb/brain/spool/` | ICO→INTKB handoff (JSONL `MemoryCandidate` + `.manifest.json` SHA-256) | ICO `packages/types/src/spool.ts` |
 | `~/.teamkb/kb-export/` | Curated Markdown tree (derived) | INTKB `apps/git-exporter/src/exporter.ts` |
 | `~/.teamkb/qmd-index/` | BM25/FTS search index (derived) | qmd (upstream) + INTKB `packages/qmd-adapter` |
-| `~/.teamkb/tokens.json` | **SECRET** — plaintext bearer tokens (jeremy=admin, ope=member) | INTKB auth |
+| `~/.teamkb/tokens.json` | **SECRET** — plaintext bearer tokens (1 admin role, 1 member role) | INTKB auth |
 | `~/.teamkb/feedback/` | Policy-eval audit (rejections) | INTKB policy engine |
 | `~/.teamkb/backups/` | our own `.age` backups (output of `~/bin/teamkb-backup.sh`) | — |
 

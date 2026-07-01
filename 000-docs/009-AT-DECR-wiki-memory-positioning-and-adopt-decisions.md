@@ -140,6 +140,15 @@ The decisions are asymmetric: a wrong **positioning** call commits a sole operat
 3. Write a **signed, dated, externally-anchored exception manifest** (indices 24–2345, both migration dates, `hash_version` provenance).
 4. Any **public showcase runs on a fresh post-migration brain**.
 The **only** permitted re-baseline is a one-time, externally-anchored, **signed** cut-over that *preserves the old chain head* and records the migration as a first-class dated audit event — done in the open, with receipts. A silent re-hash is refused by all seats.
+
+> **Amendment (2026-07-01, from the `010-AT-RISK` gap pass, R1) — step 3 correction:** the manifest
+> must pin each of the 155 exceptions by its **exact per-row hash tuple** `{id, entry_hash,
+> prev_entry_hash, hash_version, seq}` and classify by **byte-match only** — **not** by the index-range
+> (24–2345) or date this step originally enumerated. Keying on an index-*range* is a laundering surface
+> (a forged edit to any row *in* the window still produces an "expected" break and gets whitelisted as
+> `KNOWN_MIGRATION_ARTIFACT`). This preserves D5's intent (discriminate benign migration from tampering)
+> and makes it sound; the never-re-hash policy is unchanged. Tracked on bead `e06.2`; rationale +
+> ASCII classification diagram in [`010-AT-RISK` §4](010-AT-RISK-e06-adopt-list-gap-and-risk-assessment.md).
 **Most costly to recover from:** this decision (named by 6 of 7 seats).
 
 ---

@@ -11,6 +11,16 @@
 #
 # Mode: digest-first by default. Flip to auto-promote by setting TEAMKB_COMPILE_MODE=auto
 # (here or in the crontab line) once the digests look right.
+#
+# Concurrency (bead compile-then-govern-e06.12 / risk 010-AT-RISK R13 / umbrella #27):
+#   All ~/.teamkb writers (this compile, teamkb-backup.sh, and e06.5's coming on-push
+#   compile) serialize on ONE exclusive flock at $TEAMKB_HOME/.write.lock. govern's
+#   runGovern spans SQLite + file export + qmd index + anchor-git NON-atomically, so
+#   two overlapping compiles (or a compile racing the backup snapshot) can skew the
+#   brain across artifacts. This wrapper takes the lock at the top and, if another
+#   writer holds it, SKIPS gracefully (log + exit 0) — a missed nightly compile is
+#   fine, and an on-push compile that collides simply defers to the running one
+#   rather than corrupting or blocking.
 
 set -uo pipefail
 # Scratch files (signal doc, transcripts, digest, candidates) can contain
@@ -39,6 +49,29 @@ LOG="$LOG_DIR/run-${TARGET}.log"
 DIGEST="$SCRATCH/digest-${TARGET}.md"
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
+
+# ── ~/.teamkb single-writer lock (e06.12 / R13 / #27) ─────────────────────────
+# Acquire an EXCLUSIVE flock BEFORE resolving mode / invoking claude, hold it for
+# the whole run (fd 9 auto-releases on process exit). Serializes against
+# teamkb-backup.sh and any concurrent compile (nightly vs e06.5 on-push). A compile
+# that can't get the lock SKIPS gracefully (exit 0) — it must never block forever
+# nor snapshot/write a half-written brain. Short wait: a colliding compile defers to
+# the running one rather than queueing.
+TEAMKB_HOME="${TEAMKB_HOME:-$HOME/.teamkb}"
+LOCK="${TEAMKB_LOCK:-$TEAMKB_HOME/.write.lock}"
+LOCK_WAIT="${TEAMKB_LOCK_WAIT:-10}"
+if command -v flock >/dev/null 2>&1; then
+  mkdir -p "$TEAMKB_HOME"
+  exec 9>"$LOCK"
+  if ! flock -w "$LOCK_WAIT" 9; then
+    # exit 0 BEFORE the fail-loud EXIT trap is installed, so a lock-skip is silent
+    # (a deferred compile is expected, not an incident).
+    log "another ~/.teamkb writer holds $LOCK — skipping this compile run (will retry next trigger)"
+    exit 0
+  fi
+else
+  log "WARN: flock not on PATH — proceeding WITHOUT the ~/.teamkb writer lock (concurrent backup/compile could skew the brain)"
+fi
 
 # ── Mode: self-managing (digest-first, AUTO-GRADUATES — no human flip) ─────────
 # "I don't want to manage anything, the computer and AI should." The wrapper owns

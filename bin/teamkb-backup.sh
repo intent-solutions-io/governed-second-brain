@@ -45,6 +45,18 @@
 #   - the dev-box age key  ~/.config/sops/age/keys.txt   (recipient age1me3v…), or
 #   - the VPS host age key  /etc/intentsolutions/age.key  (recipient age1csyjr…).
 # Plaintext is never written to durable disk; decrypt happens only on /dev/shm.
+#
+# Concurrency (bead compile-then-govern-e06.12 / risk 010-AT-RISK R13 / umbrella #27):
+#   All ~/.teamkb writers (this backup + teamkb-compile-daily.sh, and e06.5's coming
+#   on-push compile) serialize on ONE exclusive flock at $TEAMKB_HOME/.write.lock.
+#   The govern pipeline mutates SQLite + file export + qmd index + anchor-git
+#   NON-atomically, so a backup snapshot taken mid-compile would VACUUM a DB that no
+#   longer matches the exported wiki / qmd index / anchor head — an internally
+#   inconsistent brain that "restores" but is skewed. WAL prevents DB *corruption*,
+#   not cross-artifact skew. The lock closes that window. The backup WAITS up to
+#   TEAMKB_LOCK_WAIT seconds for an in-flight compile to finish (a delayed nightly
+#   backup is fine); if it still can't acquire, it skips gracefully (exit 0) rather
+#   than snapshot a half-written brain.
 
 set -euo pipefail
 
@@ -72,6 +84,25 @@ TIER_B_PATHS=(brain/wiki feedback)
 mkdir -p "$BACKUP_DIR" "$LOGDIR"
 LOG="$LOGDIR/backup.log"
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$LOG"; }
+
+# ── ~/.teamkb single-writer lock (e06.12 / R13 / #27) ─────────────────────────
+# Acquire an EXCLUSIVE flock BEFORE any DB/file mutation, hold it for the whole
+# run (flock auto-releases when fd 9 closes on process exit). Serializes against
+# teamkb-compile-daily.sh (and e06.5's on-push compile) so a snapshot is never
+# taken across a non-atomic govern write. The backup waits for an in-flight
+# compile (TEAMKB_LOCK_WAIT, default 300s); a delayed nightly backup is fine.
+LOCK="${TEAMKB_LOCK:-$TEAMKB_HOME/.write.lock}"
+LOCK_WAIT="${TEAMKB_LOCK_WAIT:-300}"
+if command -v flock >/dev/null 2>&1; then
+  mkdir -p "$TEAMKB_HOME"
+  exec 9>"$LOCK"
+  if ! flock -w "$LOCK_WAIT" 9; then
+    log "another ~/.teamkb writer holds $LOCK after ${LOCK_WAIT}s — skipping this backup run"
+    exit 0
+  fi
+else
+  log "WARN: flock not on PATH — proceeding WITHOUT the ~/.teamkb writer lock (concurrent compile could skew this snapshot)"
+fi
 
 [ -f "$DB" ]      || { log "FATAL: govern DB not found: $DB"; exit 1; }
 [ -x "$AGE_BIN" ] || { log "FATAL: age binary not found/executable: $AGE_BIN"; exit 1; }

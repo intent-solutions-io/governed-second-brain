@@ -14,6 +14,7 @@
 #     brain/.ico/state.db       compile DB       -> VACUUM INTO (quiesced)
 #     brain/raw/                corpus (SOT)     -> archived
 #     brain/audit/              receipts chain   -> archived
+#     audit/                    external anchor log (anchors.jsonl + .git) -> archived  [receipts trust root, R4/e06.11]
 #     brain/spool/, spool/      ICO->INTKB queue -> archived
 #     tokens.json               SECRET           -> archived (whole archive is age-encrypted)
 #   Tier B — expensive-derived, cheaper to restore than recompute:
@@ -63,7 +64,9 @@ RETAIN="${TEAMKB_BACKUP_RETAIN:-14}"
 LOGDIR="${TEAMKB_BACKUP_LOGDIR:-$HOME/.local/state/teamkb-backup}"
 
 # Tier-A/B paths, RELATIVE to $TEAMKB_HOME. Only those that exist are archived.
-TIER_A_PATHS=(brain/raw brain/audit brain/spool spool tokens.json)
+# `audit` = the top-level external anchor log (anchors.jsonl + its .git) — the
+# receipts trust root (R4/e06.11); DISTINCT from brain/audit (the ICO receipts).
+TIER_A_PATHS=(brain/raw brain/audit brain/spool spool tokens.json audit)
 TIER_B_PATHS=(brain/wiki feedback)
 
 mkdir -p "$BACKUP_DIR" "$LOGDIR"
@@ -112,6 +115,7 @@ done
 # 2. MANIFEST — records what was captured + the verification fingerprints.
 raw_files="$( [ -d "$TEAMKB_HOME/brain/raw" ] && find "$TEAMKB_HOME/brain/raw" -type f | wc -l || echo 0)"
 audit_files="$( [ -d "$TEAMKB_HOME/brain/audit" ] && find "$TEAMKB_HOME/brain/audit" -type f | wc -l || echo 0)"
+anchor_files="$( [ -d "$TEAMKB_HOME/audit" ] && find "$TEAMKB_HOME/audit" -type f | wc -l || echo 0)"
 {
   echo "schemaVersion: 1"
   echo "createdAt: $(date -u +%FT%TZ)"
@@ -121,6 +125,7 @@ audit_files="$( [ -d "$TEAMKB_HOME/brain/audit" ] && find "$TEAMKB_HOME/brain/au
   echo "compile_db_tables: $ico_tables"
   echo "raw_files: $raw_files"
   echo "audit_files: $audit_files"
+  echo "anchor_files: $anchor_files"
   echo "tierA: ${TIER_A_PATHS[*]}"
   echo "tierB: ${TIER_B_PATHS[*]}"
   echo "components: dbs/teamkb.db dbs/ico-state.db ${present[*]}"
@@ -156,6 +161,10 @@ fi
 # Tier-A presence: the corpus and receipts must be in the restored tree.
 { [ -d "$rdir/brain/raw" ]   && [ "$(find "$rdir/brain/raw" -type f | wc -l)" = "$raw_files" ]; }     || fail="$fail raw_missing"
 { [ -d "$rdir/brain/audit" ] && [ "$(find "$rdir/brain/audit" -type f | wc -l)" = "$audit_files" ]; } || fail="$fail audit_missing"
+# External anchor log (the receipts trust root, R4/e06.11): if it exists on the
+# source it MUST restore non-empty with a matching file count — a restore that
+# silently drops it would lose all external tamper-evidence.
+{ [ ! -d "$TEAMKB_HOME/audit" ] || { [ -s "$rdir/audit/anchors.jsonl" ] && [ "$(find "$rdir/audit" -type f | wc -l)" = "$anchor_files" ]; }; } || fail="$fail anchor_missing"
 { [ ! -e "$TEAMKB_HOME/tokens.json" ] || [ -f "$rdir/tokens.json" ]; } || fail="$fail tokens_missing"
 
 if [ -n "$fail" ]; then
@@ -163,7 +172,7 @@ if [ -n "$fail" ]; then
   rm -f "$enc"
   exit 1
 fi
-log "restore round-trip OK: govern+compile integrity verified, corpus($raw_files)/audit($audit_files)/tokens present on tmpfs"
+log "restore round-trip OK: govern+compile integrity verified, corpus($raw_files)/audit($audit_files)/anchor($anchor_files)/tokens present on tmpfs"
 
 # 5b. refresh the umbrella system map's live-stats block now that the brain is
 #     provably backed up. Non-fatal: the map is documentation, not the backup.

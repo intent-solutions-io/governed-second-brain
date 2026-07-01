@@ -1,0 +1,64 @@
+# repos.yml — Governed Second Brain topology manifest.
+#
+# Single source of truth for the repo topology. Read by `bin/gsb` (the cross-repo
+# helper) and documented in `000-docs/007-AT-SMAP-repo-topology-and-working-surface.md`.
+# The five repos stay independent (own CI / releases / visibility) — this manifest is
+# the orchestration layer, NOT git submodules.
+#
+# Fields per repo:
+#   name        canonical name (== local dir name == remote repo name, post-2026-06-24 rename)
+#   local_path  relative to `base` below
+#   remote      git clone URL
+#   org         github org/owner
+#   visibility  public | private
+#   layer       umbrella | engine | plugin | marketplace
+#   role        one-line human description
+
+base: ~/000-projects
+
+repos:
+  - name: governed-second-brain
+    local_path: governed-second-brain
+    remote: https://github.com/intent-solutions-io/governed-second-brain.git
+    org: intent-solutions-io
+    visibility: public
+    layer: umbrella
+    role: "Umbrella / landing — the single working surface (this repo)"
+
+  - name: intentional-cognition-os
+    local_path: intentional-cognition-os
+    remote: https://github.com/jeremylongshore/intentional-cognition-os.git
+    org: jeremylongshore
+    visibility: public
+    layer: engine
+    role: "ICO — the COMPILE engine (deterministic kernel + Claude compiler, 6 passes)"
+
+  - name: qmd-team-intent-kb
+    local_path: qmd-team-intent-kb
+    remote: https://github.com/jeremylongshore/qmd-team-intent-kb.git
+    org: jeremylongshore
+    visibility: public
+    layer: engine
+    role: "INTKB — the GOVERN engine (deterministic control plane, audit chain) + the brain HTTP API"
+
+  - name: governed-second-brain-plugin
+    local_path: governed-second-brain-plugin
+    remote: https://github.com/jeremylongshore/governed-second-brain-plugin.git
+    org: jeremylongshore
+    visibility: public
+    layer: plugin
+    role: "The PUBLIC unified plugin — local (in-process ~/.teamkb) + team (remote proxy) runtime modes"
+
+  - name: team-intent-claude-plugins
+    local_path: team-intent-claude-plugins
+    remote: https://github.com/intent-solutions-io/team-intent-claude-plugins.git
+    org: intent-solutions-io
+    visibility: private
+    layer: marketplace
+    role: "Private team marketplace — publishes intent-brain (folding into the unified plugin team mode)"
+
+# Live brain data — NOT a git repo, listed so the map is complete. gsb never clones/pulls this.
+data:
+  - name: teamkb
+    local_path: ~/.teamkb
+    role: "The live compiled + governed brain (one directory). Backed up by ~/bin/teamkb-backup.sh."

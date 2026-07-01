@@ -107,7 +107,10 @@ decrypts its own copy with the host key and the corpus (726 files) extracts clea
 has `age` + `zstd` but **not** `sqlite3`, so treat it as **cold storage** — decrypt there, then
 restore the DBs onto a brain host (which has `sqlite3`) per the restore procedure above.
 
-**R2 (optional second target — follow-up):** `TEAMKB_R2_REMOTE` + `rclone` is wired for a
-Cloudflare R2 bucket as a belt-and-suspenders second off-host. The R2 endpoint/account is
-provisioned; it still needs an access key id + secret to authenticate. Tracked as a follow-up; not
-required for `c5k.4` — the VPS already satisfies the off-host requirement.
+**R2 (second off-host target — `c5k.6`, LIVE 2026-06-25):** each backup run also pushes the `.age`
+to `r2-teamkb:teamkb-backups` (Cloudflare R2, rclone S3; default `TEAMKB_R2_REMOTE`). The S3 access
+key id + secret live in the runbook `secrets.prod.sops.yaml` (keys `r2_teamkb_*`, age-encrypted) and
+in `~/.config/rclone/rclone.conf` for runtime; bucket created and first push verified. This is a
+belt-and-suspenders **backup** (encrypted blobs) on top of the VPS off-host — **not** the team brain
+bridge (that is the INTKB tailnet API + the unified plugin's team mode). Restore from R2: `rclone
+copy r2-teamkb:teamkb-backups/<archive>.age .` then follow the decrypt+restore procedure above.

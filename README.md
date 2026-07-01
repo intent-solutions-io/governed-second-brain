@@ -77,6 +77,31 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 | **[qmd](https://github.com/tobi/qmd)** (`@tobilu/qmd`) | **Retrieve** | On-device hybrid search for markdown — BM25 + vector + LLM reranking, by [@tobi](https://github.com/tobi). The retrieval substrate. Every hit is a `qmd://<collection>/<path>` URI — the citation. |
 | **[governed-second-brain-plugin](https://github.com/jeremylongshore/governed-second-brain-plugin)** | **Package** | The thing you install. A local-first Claude Code + Cowork plugin that **bundles** the engines into one in-process stdio MCP server — cited search **and** governed capture (capture → govern → promote, with a hash-chained receipt), no daemon, no network. |
 
+**How the repos fit together** — this umbrella maps them; the plugin bundles the engines; the engines + qmd form the compile → govern → retrieve pipeline. Each box is its own independently released repo:
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#0ea5e9','primaryBorderColor':'#0284c7','primaryTextColor':'#ffffff',
+  'lineColor':'#38bdf8','clusterBkg':'#0c192910','clusterBorder':'#0ea5e9'}}}%%
+flowchart TB
+    UMB["<b>governed-second-brain</b><br/>umbrella · the map (you are here)"]
+    subgraph ENG["Engines"]
+        ICO["<b>intentional-cognition-os</b><br/>ICO · compile"]
+        INTKB["<b>qmd-team-intent-kb</b><br/>INTKB · govern"]
+    end
+    QMD["<b>qmd</b> (by @tobi)<br/>retrieve · upstream, pinned"]
+    PLUG["<b>governed-second-brain-plugin</b><br/>the installable product"]
+
+    UMB -. documents .-> ICO
+    UMB -. documents .-> INTKB
+    UMB -. documents .-> PLUG
+    PLUG -->|bundles| ICO
+    PLUG -->|bundles| INTKB
+    ICO -->|spool| INTKB
+    INTKB -->|curated tree| QMD
+    QMD -->|qmd:// citations| PLUG
+```
+
 ## How it works
 
 A single fact's journey from raw source to cited, audited answer:

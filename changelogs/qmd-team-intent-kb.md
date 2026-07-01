@@ -1,6 +1,6 @@
 <!-- fetched by CI — DO NOT HAND-EDIT. Source of truth: the repo's own CHANGELOG.md. -->
 <!-- source: https://raw.githubusercontent.com/jeremylongshore/qmd-team-intent-kb/main/CHANGELOG.md -->
-<!-- fetched-at: 2026-07-01T01:43:25Z -->
+<!-- fetched-at: 2026-07-01T01:45:35Z -->
 
 # Changelog
 

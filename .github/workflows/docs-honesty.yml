@@ -1,0 +1,25 @@
+# Docs honesty gate — enforce the Governed Second Brain forbidden-words discipline
+# on the brand surface (README). ISEDC 009-AT-DECR D1 / CISO bind: a public claim
+# may never assert tamper-proof / immutable / non-repudiation / blockchain; the
+# trust model is tamper-EVIDENT (integrity + ordering + rewrite-detection). The
+# lint allows negated/disclaimer usage (the honest "not tamper-proof" framing).
+name: docs-honesty
+
+on:
+  push:
+    branches: [main]
+    paths: ['README.md', 'scripts/lint-forbidden-words.sh', '.github/workflows/docs-honesty.yml']
+  pull_request:
+    paths: ['README.md', 'scripts/lint-forbidden-words.sh', '.github/workflows/docs-honesty.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forbidden-words:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint README for forbidden claim-words
+        run: bash scripts/lint-forbidden-words.sh README.md

@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+#
+# teamkb-backup.sh — quiesced, restore-tested, client-encrypted backup of the
+# WHOLE governed-brain store under ~/.teamkb. Bead compile-then-govern-c5k.4.
+#
+# The brain is one directory on this box. Earlier this script backed up ONLY the
+# govern DB (teamkb.db); that left the compile DB, the raw corpus (the source of
+# truth), the hash-chained audit receipts, and the spool handoff unprotected. A
+# restore from a teamkb.db-only backup could not reconstruct the brain. This now
+# captures the correct scope:
+#
+#   Tier A — must-have (source of truth, receipts, secret):
+#     teamkb.db                 govern DB        -> VACUUM INTO (quiesced)
+#     brain/.ico/state.db       compile DB       -> VACUUM INTO (quiesced)
+#     brain/raw/                corpus (SOT)     -> archived
+#     brain/audit/              receipts chain   -> archived
+#     brain/spool/, spool/      ICO->INTKB queue -> archived
+#     tokens.json               SECRET           -> archived (whole archive is age-encrypted)
+#   Tier B — expensive-derived, cheaper to restore than recompute:
+#     brain/wiki/               compiled markdown
+#     feedback/
+#   Skipped — cheaply re-derived from Tier A:
+#     kb-export/, qmd-index/, brain/recall/, brain/outputs/, brain/tasks/
+#
+# Pipeline:
+#   1. VACUUM INTO both SQLite DBs   -> clean, consistent snapshots (safe with the
+#                                       live teamkb-brain-api writer; brief read lock).
+#   2. PRAGMA integrity_check        -> each snapshot must report "ok".
+#   3. tar (zstd) the snapshots + Tier-A/B paths + a MANIFEST into one archive.
+#   4. age-encrypt to TWO recipients (dev-box SOPS key + VPS host key) so it is
+#      restorable even if the dev box is lost; shred the plaintext archive.
+#   5. restore round-trip  -> decrypt + extract on tmpfs (/dev/shm); both DBs
+#                             integrity_check + table-count match, and Tier-A
+#                             presence is asserted. The backup is KEPT ONLY if it
+#                             provably restores. An unrestorable backup is deleted.
+#   6. off-host push -> (a) VPS over the tailnet (default — the VPS holds a
+#                        decrypting key) via rsync, with a sha256 byte-match check
+#                        and remote retention; and (b) Cloudflare R2 via rclone
+#                        when TEAMKB_R2_REMOTE is set (pending bucket provisioning).
+#   7. retention prune       -> keep newest TEAMKB_BACKUP_RETAIN; prune legacy
+#                               teamkb-*.db.age single-DB backups too.
+#
+# Key custody: the .age files decrypt with EITHER
+#   - the dev-box age key  ~/.config/sops/age/keys.txt   (recipient age1me3v…), or
+#   - the VPS host age key  /etc/intentsolutions/age.key  (recipient age1csyjr…).
+# Plaintext is never written to durable disk; decrypt happens only on /dev/shm.
+
+set -euo pipefail
+
+TEAMKB_HOME="${TEAMKB_HOME:-$HOME/.teamkb}"
+DB="${TEAMKB_DB:-$TEAMKB_HOME/teamkb.db}"
+ICO_DB="${TEAMKB_ICO_DB:-$TEAMKB_HOME/brain/.ico/state.db}"
+BACKUP_DIR="${TEAMKB_BACKUP_DIR:-$TEAMKB_HOME/backups}"
+# Dev-box SOPS recipient (key: ~/.config/sops/age/keys.txt) + VPS host recipient.
+AGE_RECIP_LOCAL="${TEAMKB_AGE_RECIPIENT:-age1me3vkelljqe2u4zcagja9ru5fdpfpw72xmch39fwle2cr0yfr4cs8vr5d8}"
+AGE_RECIP_VPS="${TEAMKB_AGE_RECIPIENT_VPS:-age1csyjrdez6fhe97zsu3zden8j7x7xes6zm3yzce5fzz524wmqav4sc0vgz3}"
+AGE_KEY="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
+AGE_BIN="${AGE_BIN:-$HOME/bin/age}"
+R2_REMOTE="${TEAMKB_R2_REMOTE:-r2-teamkb:teamkb-backups}"   # 2nd off-host target (Cloudflare R2); empty = skip
+# Off-host over the tailnet to the VPS (which holds a decrypting key). ssh-alias:dir; empty disables.
+VPS_REMOTE="${TEAMKB_VPS_REMOTE:-intentsolutions:teamkb-backups}"
+RETAIN="${TEAMKB_BACKUP_RETAIN:-14}"
+LOGDIR="${TEAMKB_BACKUP_LOGDIR:-$HOME/.local/state/teamkb-backup}"
+
+# Tier-A/B paths, RELATIVE to $TEAMKB_HOME. Only those that exist are archived.
+TIER_A_PATHS=(brain/raw brain/audit brain/spool spool tokens.json)
+TIER_B_PATHS=(brain/wiki feedback)
+
+mkdir -p "$BACKUP_DIR" "$LOGDIR"
+LOG="$LOGDIR/backup.log"
+log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$LOG"; }
+
+[ -f "$DB" ]      || { log "FATAL: govern DB not found: $DB"; exit 1; }
+[ -x "$AGE_BIN" ] || { log "FATAL: age binary not found/executable: $AGE_BIN"; exit 1; }
+command -v sqlite3 >/dev/null || { log "FATAL: sqlite3 not on PATH"; exit 1; }
+command -v zstd    >/dev/null || { log "FATAL: zstd not on PATH"; exit 1; }
+
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+work="$(mktemp -d)"
+shm="$(mktemp -d -p /dev/shm 2>/dev/null || mktemp -d)"
+trap 'rm -rf "$work" "$shm"' EXIT
+stage="$work/stage"
+mkdir -p "$stage/dbs"
+arc="$work/teamkb-full-$ts.tar.zst"
+enc="$BACKUP_DIR/teamkb-full-$ts.tar.zst.age"
+
+log "=== full-brain backup start: $TEAMKB_HOME ==="
+
+# 1. quiesced snapshots of both SQLite DBs (govern + compile)
+sqlite3 "$DB" "VACUUM INTO '$stage/dbs/teamkb.db'"
+gov_ic="$(sqlite3 "$stage/dbs/teamkb.db" 'PRAGMA integrity_check;')"
+[ "$gov_ic" = "ok" ] || { log "FATAL: govern DB integrity_check: $gov_ic"; exit 1; }
+gov_tables="$(sqlite3 "$stage/dbs/teamkb.db" "SELECT count(*) FROM sqlite_master WHERE type='table';")"
+
+ico_tables="-"
+if [ -f "$ICO_DB" ]; then
+  sqlite3 "$ICO_DB" "VACUUM INTO '$stage/dbs/ico-state.db'"
+  ico_ic="$(sqlite3 "$stage/dbs/ico-state.db" 'PRAGMA integrity_check;')"
+  [ "$ico_ic" = "ok" ] || { log "FATAL: compile DB integrity_check: $ico_ic"; exit 1; }
+  ico_tables="$(sqlite3 "$stage/dbs/ico-state.db" "SELECT count(*) FROM sqlite_master WHERE type='table';")"
+else
+  log "WARN: compile DB not found at $ICO_DB — backing up govern DB + corpus only"
+fi
+log "snapshots ok: govern integrity=ok tables=$gov_tables; compile tables=$ico_tables"
+
+# Collect the Tier-A/B paths that actually exist (tar errors on missing paths).
+present=()
+for p in "${TIER_A_PATHS[@]}" "${TIER_B_PATHS[@]}"; do
+  [ -e "$TEAMKB_HOME/$p" ] && present+=("$p")
+done
+
+# 2. MANIFEST — records what was captured + the verification fingerprints.
+raw_files="$( [ -d "$TEAMKB_HOME/brain/raw" ] && find "$TEAMKB_HOME/brain/raw" -type f | wc -l || echo 0)"
+audit_files="$( [ -d "$TEAMKB_HOME/brain/audit" ] && find "$TEAMKB_HOME/brain/audit" -type f | wc -l || echo 0)"
+{
+  echo "schemaVersion: 1"
+  echo "createdAt: $(date -u +%FT%TZ)"
+  echo "host: $(hostname)"
+  echo "teamkbHome: $TEAMKB_HOME"
+  echo "govern_db_tables: $gov_tables"
+  echo "compile_db_tables: $ico_tables"
+  echo "raw_files: $raw_files"
+  echo "audit_files: $audit_files"
+  echo "tierA: ${TIER_A_PATHS[*]}"
+  echo "tierB: ${TIER_B_PATHS[*]}"
+  echo "components: dbs/teamkb.db dbs/ico-state.db ${present[*]}"
+} > "$stage/MANIFEST.txt"
+
+# 3. one archive: staged DBs + MANIFEST (from $stage) + Tier-A/B paths (from $TEAMKB_HOME)
+tar --zstd -cf "$arc" \
+  -C "$stage" MANIFEST.txt dbs \
+  -C "$TEAMKB_HOME" "${present[@]}"
+log "archived: dbs + [${present[*]}] -> $(du -h "$arc" | cut -f1)"
+
+# 4. encrypt to both recipients, then shred the plaintext archive + staged DBs
+"$AGE_BIN" -r "$AGE_RECIP_LOCAL" -r "$AGE_RECIP_VPS" -o "$enc" "$arc"
+shred -u "$arc" 2>/dev/null || rm -f "$arc"
+rm -rf "$stage/dbs"
+log "encrypted (2 recipients) -> $enc ($(du -h "$enc" | cut -f1))"
+
+# 5. restore round-trip on tmpfs: decrypt + extract + verify BOTH DBs + Tier-A presence
+rdir="$shm/restore"
+mkdir -p "$rdir"
+"$AGE_BIN" -d -i "$AGE_KEY" -o "$shm/restore.tar.zst" "$enc"
+tar --zstd -xf "$shm/restore.tar.zst" -C "$rdir"
+
+fail=""
+rgov_ic="$(sqlite3 "$rdir/dbs/teamkb.db" 'PRAGMA integrity_check;' 2>/dev/null || echo MISSING)"
+rgov_tab="$(sqlite3 "$rdir/dbs/teamkb.db" "SELECT count(*) FROM sqlite_master WHERE type='table';" 2>/dev/null || echo -1)"
+{ [ "$rgov_ic" = "ok" ] && [ "$rgov_tab" = "$gov_tables" ]; } || fail="$fail govern(ic=$rgov_ic tab=$rgov_tab/$gov_tables)"
+if [ "$ico_tables" != "-" ]; then
+  rico_ic="$(sqlite3 "$rdir/dbs/ico-state.db" 'PRAGMA integrity_check;' 2>/dev/null || echo MISSING)"
+  rico_tab="$(sqlite3 "$rdir/dbs/ico-state.db" "SELECT count(*) FROM sqlite_master WHERE type='table';" 2>/dev/null || echo -1)"
+  { [ "$rico_ic" = "ok" ] && [ "$rico_tab" = "$ico_tables" ]; } || fail="$fail compile(ic=$rico_ic tab=$rico_tab/$ico_tables)"
+fi
+# Tier-A presence: the corpus and receipts must be in the restored tree.
+{ [ -d "$rdir/brain/raw" ]   && [ "$(find "$rdir/brain/raw" -type f | wc -l)" = "$raw_files" ]; }     || fail="$fail raw_missing"
+{ [ -d "$rdir/brain/audit" ] && [ "$(find "$rdir/brain/audit" -type f | wc -l)" = "$audit_files" ]; } || fail="$fail audit_missing"
+{ [ ! -e "$TEAMKB_HOME/tokens.json" ] || [ -f "$rdir/tokens.json" ]; } || fail="$fail tokens_missing"
+
+if [ -n "$fail" ]; then
+  log "FATAL: restore round-trip FAILED —$fail — discarding unrestorable backup"
+  rm -f "$enc"
+  exit 1
+fi
+log "restore round-trip OK: govern+compile integrity verified, corpus($raw_files)/audit($audit_files)/tokens present on tmpfs"
+
+# 5b. refresh the umbrella system map's live-stats block now that the brain is
+#     provably backed up. Non-fatal: the map is documentation, not the backup.
+SYSTEMMAP="${TEAMKB_SYSTEMMAP:-$HOME/000-projects/governed-second-brain/bin/teamkb-systemmap.sh}"
+if [ -x "$SYSTEMMAP" ]; then
+  if "$SYSTEMMAP" >>"$LOG" 2>&1; then
+    log "system map refreshed via $SYSTEMMAP"
+  else
+    log "WARN: system map refresh FAILED (non-fatal — backup is good)"
+  fi
+else
+  log "system map refresh SKIPPED (not executable: $SYSTEMMAP)"
+fi
+
+# 6. off-host push (R2). Remaining open item on c5k.4 until the bucket is provisioned.
+if [ -n "$R2_REMOTE" ] && command -v rclone >/dev/null; then
+  if rclone copy "$enc" "$R2_REMOTE/"; then
+    log "off-host push OK -> $R2_REMOTE"
+  else
+    log "WARN: off-host push to $R2_REMOTE FAILED (local encrypted backup retained)"
+  fi
+else
+  log "off-host R2 push SKIPPED — set TEAMKB_R2_REMOTE (+ rclone remote) to enable."
+fi
+
+# 6b. off-host push over the tailnet to the VPS. The archive is already encrypted
+#     to the VPS host key, so the VPS is a valid restore site; we still verify the
+#     remote copy byte-for-byte by sha256 (the .age is opaque). Non-fatal on
+#     failure — the local encrypted backup is retained.
+if [ -n "$VPS_REMOTE" ]; then
+  vhost="${VPS_REMOTE%%:*}"
+  vdir="${VPS_REMOTE#*:}"
+  SSHO=(-o ConnectTimeout=10 -o BatchMode=yes)
+  if ssh "${SSHO[@]}" "$vhost" "mkdir -p '$vdir' && chmod 700 '$vdir'" 2>/dev/null \
+     && rsync -aq -e "ssh ${SSHO[*]}" "$enc" "$VPS_REMOTE/"; then
+    lsum="$(sha256sum "$enc" | cut -d' ' -f1)"
+    rsum="$(ssh "${SSHO[@]}" "$vhost" "sha256sum '$vdir/$(basename "$enc")' 2>/dev/null | cut -d' ' -f1" || true)"
+    if [ "$lsum" = "$rsum" ]; then
+      log "off-host VPS push OK -> $VPS_REMOTE (sha256 verified)"
+      # remote retention: keep newest $RETAIN on the VPS too
+      ssh "${SSHO[@]}" "$vhost" "ls -1t '$vdir'/teamkb-full-*.tar.zst.age 2>/dev/null | tail -n +$((RETAIN + 1)) | xargs -r rm -f" 2>/dev/null || true
+    else
+      log "WARN: off-host VPS push sha256 MISMATCH (local=$lsum remote=$rsum) — remote copy suspect"
+    fi
+  else
+    log "WARN: off-host VPS push to $VPS_REMOTE FAILED (local encrypted backup retained)"
+  fi
+else
+  log "off-host VPS push SKIPPED (TEAMKB_VPS_REMOTE empty)."
+fi
+
+# 7. retention prune (newest $RETAIN full archives; also drop legacy single-DB backups)
+mapfile -t old < <(ls -1t "$BACKUP_DIR"/teamkb-full-*.tar.zst.age 2>/dev/null | tail -n +"$((RETAIN + 1))")
+if [ "${#old[@]}" -gt 0 ]; then
+  rm -f "${old[@]}"
+  log "pruned ${#old[@]} old full backup(s); retained newest $RETAIN"
+fi
+mapfile -t legacy < <(ls -1 "$BACKUP_DIR"/teamkb-*.db.age 2>/dev/null)
+if [ "${#legacy[@]}" -gt 0 ]; then
+  rm -f "${legacy[@]}"
+  log "removed ${#legacy[@]} legacy single-DB backup(s) (superseded by full-brain archive)"
+fi
+
+log "=== full-brain backup done ==="

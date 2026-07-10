@@ -1,0 +1,28 @@
+{
+  "files": [
+    {
+      "path": "README.md",
+      "description": "The primary deliverable — the product page. Carries the govern+receipts thesis, the competitive teardown, the two Mermaid diagrams, and the load-bearing \"What the receipt does *not* do\" trust box with the tamper-evident (not tamper-proof) framing."
+    },
+    {
+      "path": "CLAUDE.md",
+      "description": "The umbrella operating contract: this repo is the map, not the code; the compile-then-govern thesis; the forbidden-words invariant; the two distribution channels; R2 is backup-only, not the bridge; editing conventions for the README/diagrams/assets."
+    },
+    {
+      "path": "000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md",
+      "description": "The code-verified system map: where the live brain state lives (~/.teamkb), source-of-truth vs derived, candidates insert-only, the backup/DR scope, and the AUTOGEN:live-stats block (auto-regenerated — never hand-edit)."
+    },
+    {
+      "path": "000-docs/013-OD-STND-commit-branch-pr-conventions.md",
+      "description": "The commit / branch / PR standard the reviewer enforces: the two PR lanes, the required headings, the Layer(s)-touched + invariants declaration, the evidence requirement, and the 7-question Outsider Test."
+    },
+    {
+      "path": "000-docs/007-AT-SMAP-repo-topology-and-working-surface.md",
+      "description": "The repo-topology map — the exact local<->remote table across the 5 repos + ~/.teamkb, the Mermaid diagram, and the working-surface doctrine (repos.yml + bin/gsb)."
+    },
+    {
+      "path": "repos.yml",
+      "description": "The topology manifest bin/gsb reads to map / status / sync the five independent sub-repos (not git submodules — each keeps its own CI, releases, and visibility)."
+    }
+  ]
+}

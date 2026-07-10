@@ -1,14 +1,15 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-    <img alt="Governed Second Brain — local-first, citation-backed knowledge with receipts. Compile, then govern." src="assets/banner-light.svg" width="860">
+    <img alt="Bob's Big Brain — local-first, citation-backed knowledge with receipts. Compile, then govern." src="assets/banner-light.svg" width="860">
   </picture>
 </p>
 
-<h1 align="center">Governed Second Brain</h1>
+<h1 align="center">Bob's Big Brain</h1>
 
 <p align="center">
-  Turn <em>your own</em> files into a governed, <code>qmd://</code>-cited second brain with a tamper-evident audit trail — for humans and agents.<br>
+  <strong>The governed team brain — cited recall, hash-chained receipts.</strong><br>
+  Turn <em>your own</em> files into a governed, <code>qmd://</code>-cited team brain with a tamper-evident audit trail — for humans and agents.<br>
   <strong>Compile, then govern.</strong> Local by default; remote sharing is your opt-in.
 </p>
 
@@ -31,7 +32,7 @@
 
 ---
 
-This repo is the umbrella for the **Governed Second Brain** stack — local-first knowledge built on the *compile, then govern* architecture. Each component is its own independently developed and released repository; this repo is where we explain **what they are, what they do, how they stack, and why they beat the alternatives.** No application code lives here — just the map.
+This repo is the umbrella for the **Bob's Big Brain** stack — local-first knowledge built on the *compile, then govern* architecture. Each component is its own independently developed and released repository; this repo is where we explain **what they are, what they do, how they stack, and why they beat the alternatives.** No application code lives here — just the map.
 
 ## The 60-second version
 
@@ -49,7 +50,7 @@ This stack is built around that gap.
 
 The category optimizes one axis: recall. We compete on a different one: **govern + receipts.**
 
-| Capability | Vector stores<br><sub>Pinecone · Chroma · pgvector</sub> | Agent-memory layers<br><sub>gstack/GBrain · Mem0 · Letta · Zep</sub> | **Governed Second Brain** |
+| Capability | Vector stores<br><sub>Pinecone · Chroma · pgvector</sub> | Agent-memory layers<br><sub>gstack/GBrain · Mem0 · Letta · Zep</sub> | **Bob's Big Brain** |
 |---|:---:|:---:|:---:|
 | Recall / retrieval | ✅ | ✅ | ✅ |
 | **Derived** knowledge (summaries, concepts, contradictions) | ❌ raw chunks | ◑ extraction | ✅ 6 compiler passes |
@@ -66,7 +67,7 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 
 **What we do better:** we don't hand the model a pile of similar chunks and hope. We *derive* knowledge, *govern* what's allowed to become durable memory with deterministic code, and *prove* every retrieval with a citation + an audit chain. The model proposes; the system decides and records.
 
-> **On gstack / GBrain.** [gstack](https://github.com/garrytan/gstack) (Garry Tan's Claude Code harness, ~90K★) ships [GBrain](https://github.com/garrytan/gstack) as its memory layer, and it's genuinely strong at the thing it's built for: recall — top LongMemEval-S scores, ~92% fewer tokens per session, near-zero-friction capture. That's the recall axis, done well. What a memory layer doesn't do — by design, it's memory, not a control plane — is gate what becomes durable knowledge through deterministic policy, or hand you a tamper-evident receipt of what the agent actually used. *"Better memory for agents, but no receipt for what the agent did with it"* was the exact critique that kicked off this project. The Governed Second Brain is the answer: recall **and** governance **and** receipts.
+> **On gstack / GBrain.** [gstack](https://github.com/garrytan/gstack) (Garry Tan's Claude Code harness, ~90K★) ships [GBrain](https://github.com/garrytan/gstack) as its memory layer, and it's genuinely strong at the thing it's built for: recall — top LongMemEval-S scores, ~92% fewer tokens per session, near-zero-friction capture. That's the recall axis, done well. What a memory layer doesn't do — by design, it's memory, not a control plane — is gate what becomes durable knowledge through deterministic policy, or hand you a tamper-evident receipt of what the agent actually used. *"Better memory for agents, but no receipt for what the agent did with it"* was the exact critique that kicked off this project. Bob's Big Brain is the answer: recall **and** governance **and** receipts.
 
 ## What's in the stack
 

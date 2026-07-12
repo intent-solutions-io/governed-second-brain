@@ -6,8 +6,9 @@
 # e06.2 — "0 tamper signatures, N benign forks", NOT a false TAMPER klaxon). This
 # adds the QUALITY-DRIFT half: a cheap, read-only snapshot of the governed store
 # that flags day-over-day drift — a governance backlog, a promotion stall, a
-# supersession/churn spike — pushed to ntfy so the un-babysat nightly loop is
-# observable on QUALITY, not just liveness.
+# supersession/churn spike — pushed to Slack #cron-failures on DRIFT (ntfy
+# retired 2026-06-13) so the un-babysat loop is observable on QUALITY, not just
+# liveness.
 #
 # Auto by default, ALERT on drift (not a raw dump) — consistent with the
 # self-management doctrine. Standalone + idempotent; run it from cron or after the
@@ -20,8 +21,12 @@ set -uo pipefail
 TEAMKB_HOME="${TEAMKB_HOME:-$HOME/.teamkb}"
 DB="${TEAMKB_DB:-$TEAMKB_HOME/teamkb.db}"
 STATE="${TEAMKB_QUALITY_STATE:-$TEAMKB_HOME/.quality-digest.state}"
-NTFY_TOPIC_FILE="${NTFY_TOPIC_FILE:-$HOME/.ntfy-topic}"
-NTFY_TOPIC="${TEAMKB_NTFY_TOPIC:-$( [ -f "$NTFY_TOPIC_FILE" ] && head -n1 "$NTFY_TOPIC_FILE" 2>/dev/null )}"
+# Shared notify spine — cron_fail routes a DRIFT alert (normalized to plain
+# English) to #cron-failures. ntfy retired 2026-06-13. Guarded for fresh clones.
+if [ -f "$HOME/bin/lib/notify-lib.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$HOME/bin/lib/notify-lib.sh"
+fi
 # drift thresholds (env-overridable)
 CANDIDATE_BACKLOG_WARN="${TEAMKB_CANDIDATE_BACKLOG_WARN:-200}"   # ungoverned inbox this large = a governance stall
 SUPERSEDE_SPIKE_WARN="${TEAMKB_SUPERSEDE_SPIKE_WARN:-50}"        # >this many new supersessions overnight = churn
@@ -107,15 +112,11 @@ else
   if [ "${#alerts[@]}" -gt 0 ]; then printf '⚠ DRIFT:\n'; printf '  - %s\n' "${alerts[@]}"; fi
 fi
 
-# ── best-effort ntfy: push a one-liner on DRIFT (or always, if --no-ntfy absent and OK) ──
-if [ "$want_ntfy" -eq 1 ] && [ -n "$NTFY_TOPIC" ]; then
-  if [ "$status" = "DRIFT" ]; then
-    curl -s -H "Title: ⚠ teamkb govern-quality DRIFT" -H "Priority: high" -H "Tags: warning,brain" \
-      -d "$(printf '%s\n' "${alerts[@]}")" "https://ntfy.sh/${NTFY_TOPIC}" >/dev/null 2>&1 || true
-  else
-    curl -s -H "Title: teamkb govern-quality OK" -H "Priority: min" -H "Tags: brain" \
-      -d "active=${active} superseded=${superseded} backlog=${backlog} audit=${audit}" "https://ntfy.sh/${NTFY_TOPIC}" >/dev/null 2>&1 || true
-  fi
+# ── best-effort Slack: push a normalized one-liner on DRIFT ONLY (ntfy retired) ──
+# Success is silent — the OK metrics are already on stdout for whoever ran this.
+# The --no-ntfy flag is kept as the legacy opt-out (now suppresses the Slack push).
+if [ "$want_ntfy" -eq 1 ] && [ "$status" = "DRIFT" ] && command -v cron_fail >/dev/null 2>&1; then
+  cron_fail "teamkb-quality-digest" "govern-quality DRIFT: $(printf '%s; ' "${alerts[@]}")"
 fi
 
 exit 0

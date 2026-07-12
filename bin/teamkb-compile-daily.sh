@@ -37,6 +37,19 @@ SCRATCH=/tmp/teamkb-compile
 LOG_DIR=$HOME/.local/state/teamkb-compile-daily
 NTFY_TOPIC_FILE=$HOME/.ntfy-topic
 
+# ── Inbox review phase (jfv.8 / 014-AT-DECR) ──────────────────────────────────
+# After compiling MY day, review the TEAM's quarantined proposals with the agent
+# reviewer. Runs in the SAME flock (sequential — never overlaps the compile). Live
+# vs dry-run is tied to the compile MODE: `auto` → live (brain_approve/reject),
+# `digest` → --dry-run (print verdicts only). So the ONE self-graduation gates
+# both — the review never writes until the compile is already trusted to. Skipped
+# cleanly unless the dedicated teamkb-review-agent admin token is provisioned.
+REVIEW_SKILL_DIR=$HOME/.claude/skills/teamkb-review
+REVIEW_MCP_CONFIG="$REVIEW_SKILL_DIR/scripts/review-mcp-config.json"
+REVIEW_TOKEN_FILE="${TEAMKB_REVIEW_TOKEN_FILE:-$HOME/.teamkb/.review-agent-token}"
+REVIEW_API_URL="${TEAMKB_API_URL:-http://100.109.119.103:3847}"
+REVIEW_TIMEOUT_SECS="${TEAMKB_REVIEW_TIMEOUT:-900}" # 15 min ceiling for the review pass
+
 TIMEOUT_SECS="${TEAMKB_COMPILE_TIMEOUT:-1800}" # 30 min hard ceiling
 TARGET="${TEAMKB_COMPILE_DATE:-$(date -d 'yesterday' +%Y-%m-%d)}"
 NEXT="$(date -d "$TARGET +1 day" +%Y-%m-%d)"
@@ -49,6 +62,52 @@ LOG="$LOG_DIR/run-${TARGET}.log"
 DIGEST="$SCRATCH/digest-${TARGET}.md"
 
 log() { echo "[$(date -Is)] $*" | tee -a "$LOG"; }
+
+# ── Inbox review (jfv.8 / 014-AT-DECR) ────────────────────────────────────────
+# Sets the global REVIEW_SUMMARY (folded into the digest email). No-op + clear log
+# line when the teamkb-review-agent token is not provisioned — that absence IS the
+# deliberate activation gate (per the self-managing-rollout doctrine, nobody flips
+# a switch; provisioning the token is the one deliberate step).
+REVIEW_SUMMARY=""
+run_inbox_review() {
+  local tok=""
+  if [ -n "${TEAMKB_REVIEW_AGENT_TOKEN:-}" ]; then
+    tok="$TEAMKB_REVIEW_AGENT_TOKEN"
+  elif [ -r "$REVIEW_TOKEN_FILE" ]; then
+    tok="$(head -n1 "$REVIEW_TOKEN_FILE" 2>/dev/null)"
+  fi
+  if [ -z "$tok" ]; then
+    log "inbox review SKIPPED — no teamkb-review-agent token ($REVIEW_TOKEN_FILE). Provision it to activate (see teamkb-review SKILL.md)."
+    REVIEW_SUMMARY="Inbox review: skipped (no teamkb-review-agent token provisioned — the deliberate activation gate)."
+    return 0
+  fi
+  if [ ! -f "$REVIEW_MCP_CONFIG" ]; then
+    log "inbox review SKIPPED — review MCP config missing at $REVIEW_MCP_CONFIG"
+    REVIEW_SUMMARY="Inbox review: skipped (review MCP config missing — run deploy-teamkb-compile.sh)."
+    return 0
+  fi
+  # Live iff the compile is in auto (the single self-graduation gates both); digest → dry-run.
+  local review_flag="--dry-run"; [ "$MODE" = "auto" ] && review_flag=""
+  local rlog="$SCRATCH/review-${TARGET}.log"
+  log "Invoking: claude -p /teamkb-review ${review_flag:-（live）} (timeout ${REVIEW_TIMEOUT_SECS}s)"
+  # The token is exported only for this invocation's env (pty subshell); it is
+  # never logged. TEAMKB_API_URL + TEAMKB_REVIEW_AGENT_TOKEN feed review-mcp-config.
+  if TEAMKB_API_URL="$REVIEW_API_URL" TEAMKB_REVIEW_AGENT_TOKEN="$tok" \
+     /usr/bin/timeout "$REVIEW_TIMEOUT_SECS" script -e -q -a \
+       -c "TEAMKB_API_URL='$REVIEW_API_URL' TEAMKB_REVIEW_AGENT_TOKEN='$tok' claude -p '/teamkb-review $review_flag' --mcp-config '$REVIEW_MCP_CONFIG' --strict-mcp-config --dangerously-skip-permissions" \
+       "$rlog" >/dev/null 2>&1; then
+    # Pull the agent's one-line tallies out of the transcript for the digest.
+    local tally
+    tally="$(grep -oE 'reviewed [0-9]+ · promoted [0-9]+ · held [0-9]+ · rejected [0-9]+( · refused-by-rules [0-9]+)?' "$rlog" 2>/dev/null | tail -1)"
+    REVIEW_SUMMARY="Inbox review (${review_flag:-live}): ${tally:-completed (see $rlog)}."
+    log "inbox review OK — ${REVIEW_SUMMARY}"
+  else
+    local rc=$?
+    REVIEW_SUMMARY="Inbox review: FAILED (rc=$rc, ${review_flag:-live}) — see $rlog. (The compile still succeeded; review is best-effort.)"
+    log "inbox review FAILED (rc=$rc) — see $rlog"
+  fi
+  return 0
+}
 
 # ── ~/.teamkb single-writer lock (e06.12 / R13 / #27) ─────────────────────────
 # Acquire an EXCLUSIVE flock BEFORE resolving mode / invoking claude, hold it for
@@ -172,6 +231,11 @@ if [ "$STATUS" = "OK" ] && [ "$HAS_RECORD" -eq 0 ]; then
   STATUS="OK (no activity — nothing to compile)"
 fi
 
+# ── Review the team's quarantined inbox (jfv.8 / 014-AT-DECR) ─────────────────
+# After compiling my own day, review the team's held proposals. Best-effort — a
+# review failure never changes the compile STATUS (the brain is already updated).
+run_inbox_review
+
 # ── Consecutive-failure escalation ───────────────────────────────────────────
 CONSEC=0
 while IFS= read -r f; do
@@ -194,11 +258,13 @@ if [ -f "$DIGEST" ]; then
 
 --------------------------------------------------------------------------------
 Run: ${STATUS} · ${WALL}s · mode=${MODE} · full log: ${LOG}
+${REVIEW_SUMMARY}
 ${GRAD_NOTE}${SOAK_NOTE}"
   SUBJECT="${ESC_PREFIX}teamkb-compile ${TARGET} (${MODE}) — ${STATUS}"
 else
   BODY="teamkb-compile ${TARGET} (mode=${MODE}) — ${STATUS}
 No digest file was written ($DIGEST). Likely no activity, or the run failed before Phase 5.
+${REVIEW_SUMMARY}
 
 Last 50 log lines (full log: ${LOG}):
 ================================================================================

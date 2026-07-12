@@ -54,7 +54,10 @@ quarantined=$(q "SELECT count(*) FROM candidates WHERE status='quarantined';"); 
 # lexical timestamp comparison is correct against the stored 'YYYY-MM-DDTHH:MM:SS.sssZ'.
 since=$(q "SELECT strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 day');")
 agent_promoted=$(q "SELECT count(*) FROM audit_events WHERE action='promoted' AND json_extract(actor_json,'\$.id')='${REVIEW_AGENT_ACTOR}' AND timestamp >= '${since}';"); agent_promoted=${agent_promoted:-0}
-agent_rejected=$(q "SELECT count(*) FROM audit_events WHERE action='deleted' AND json_extract(actor_json,'\$.id')='${REVIEW_AGENT_ACTOR}' AND timestamp >= '${since}';"); agent_rejected=${agent_rejected:-0}
+# A candidate rejection is written as an action='deleted' event (the curator's
+# reject() convention) carrying details.disposition='rejected'. Scope on BOTH so a
+# hypothetical non-rejection 'deleted' by the same actor can't inflate the count.
+agent_rejected=$(q "SELECT count(*) FROM audit_events WHERE action='deleted' AND json_extract(actor_json,'\$.id')='${REVIEW_AGENT_ACTOR}' AND json_extract(details_json,'\$.disposition')='rejected' AND timestamp >= '${since}';"); agent_rejected=${agent_rejected:-0}
 by_cat=$(sqlite3 -readonly -batch -noheader "$DB" \
   "SELECT category||'='||count(*) FROM curated_memories WHERE lifecycle='active' GROUP BY category ORDER BY count(*) DESC;" 2>/dev/null | paste -sd' ' -)
 

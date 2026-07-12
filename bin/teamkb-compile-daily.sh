@@ -90,11 +90,15 @@ run_inbox_review() {
   local review_flag="--dry-run"; [ "$MODE" = "auto" ] && review_flag=""
   local rlog="$SCRATCH/review-${TARGET}.log"
   log "Invoking: claude -p /teamkb-review ${review_flag:-（live）} (timeout ${REVIEW_TIMEOUT_SECS}s)"
-  # The token is exported only for this invocation's env (pty subshell); it is
-  # never logged. TEAMKB_API_URL + TEAMKB_REVIEW_AGENT_TOKEN feed review-mcp-config.
+  # The token is exported ONLY into this invocation's environment via the command
+  # prefix below — it is NEVER interpolated into the `script -c` shell string (that
+  # would both duplicate it and risk shell-injection if a token held metacharacters).
+  # `timeout` and `script -c` inherit the environment, so TEAMKB_API_URL +
+  # TEAMKB_REVIEW_AGENT_TOKEN reach `claude` (and review-mcp-config's ${VAR} expansion)
+  # without ever appearing in the shell string. The token is also never logged.
   if TEAMKB_API_URL="$REVIEW_API_URL" TEAMKB_REVIEW_AGENT_TOKEN="$tok" \
      /usr/bin/timeout "$REVIEW_TIMEOUT_SECS" script -e -q -a \
-       -c "TEAMKB_API_URL='$REVIEW_API_URL' TEAMKB_REVIEW_AGENT_TOKEN='$tok' claude -p '/teamkb-review $review_flag' --mcp-config '$REVIEW_MCP_CONFIG' --strict-mcp-config --dangerously-skip-permissions" \
+       -c "claude -p '/teamkb-review $review_flag' --mcp-config '$REVIEW_MCP_CONFIG' --strict-mcp-config --dangerously-skip-permissions" \
        "$rlog" >/dev/null 2>&1; then
     # Pull the agent's one-line tallies out of the transcript for the digest.
     local tally

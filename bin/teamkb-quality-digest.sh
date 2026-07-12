@@ -25,6 +25,8 @@ NTFY_TOPIC="${TEAMKB_NTFY_TOPIC:-$( [ -f "$NTFY_TOPIC_FILE" ] && head -n1 "$NTFY
 # drift thresholds (env-overridable)
 CANDIDATE_BACKLOG_WARN="${TEAMKB_CANDIDATE_BACKLOG_WARN:-200}"   # ungoverned inbox this large = a governance stall
 SUPERSEDE_SPIKE_WARN="${TEAMKB_SUPERSEDE_SPIKE_WARN:-50}"        # >this many new supersessions overnight = churn
+QUARANTINE_REVIEW_WARN="${TEAMKB_QUARANTINE_REVIEW_WARN:-25}"    # this many member proposals awaiting review = go look (jfv.8)
+REVIEW_AGENT_ACTOR="${TEAMKB_REVIEW_AGENT_ACTOR:-teamkb-review-agent}"  # the audited review-agent actor id
 
 want_ntfy=1; want_json=0
 for a in "$@"; do case "$a" in --no-ntfy) want_ntfy=0;; --json) want_json=1;; esac; done
@@ -42,6 +44,20 @@ audit=$(q "SELECT count(*) FROM audit_events;"); audit=${audit:-0}
 # governed but not yet promoted = the inbox backlog (candidates without a curated row)
 promoted_ids=$(q "SELECT count(DISTINCT candidate_id) FROM curated_memories;"); promoted_ids=${promoted_ids:-0}
 backlog=$(( candidates - promoted_ids )); [ "$backlog" -lt 0 ] && backlog=0
+
+# ── Agent-review queue + last-night decisions (jfv.8 / 014-AT-DECR) ───────────
+# quarantined = member proposals HELD for review (the exit the review agent drains);
+# a subset of the backlog, broken out so "you have proposals to review" is visible.
+quarantined=$(q "SELECT count(*) FROM candidates WHERE status='quarantined';"); quarantined=${quarantined:-0}
+# The review agent's decisions in the last 24h — filterable BECAUSE every decision
+# is a receipt naming the actor (014-AT-DECR #2). ISO-format threshold so the
+# lexical timestamp comparison is correct against the stored 'YYYY-MM-DDTHH:MM:SS.sssZ'.
+since=$(q "SELECT strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 day');")
+agent_promoted=$(q "SELECT count(*) FROM audit_events WHERE action='promoted' AND json_extract(actor_json,'\$.id')='${REVIEW_AGENT_ACTOR}' AND timestamp >= '${since}';"); agent_promoted=${agent_promoted:-0}
+# A candidate rejection is written as an action='deleted' event (the curator's
+# reject() convention) carrying details.disposition='rejected'. Scope on BOTH so a
+# hypothetical non-rejection 'deleted' by the same actor can't inflate the count.
+agent_rejected=$(q "SELECT count(*) FROM audit_events WHERE action='deleted' AND json_extract(actor_json,'\$.id')='${REVIEW_AGENT_ACTOR}' AND json_extract(details_json,'\$.disposition')='rejected' AND timestamp >= '${since}';"); agent_rejected=${agent_rejected:-0}
 by_cat=$(sqlite3 -readonly -batch -noheader "$DB" \
   "SELECT category||'='||count(*) FROM curated_memories WHERE lifecycle='active' GROUP BY category ORDER BY count(*) DESC;" 2>/dev/null | paste -sd' ' -)
 
@@ -63,6 +79,9 @@ alerts=()
 # Backlog is an absolute-state alert (fine on the first run); the Δ-based ones are
 # suppressed on the baseline run.
 [ "$backlog" -ge "$CANDIDATE_BACKLOG_WARN" ] && alerts+=("governance backlog: $backlog candidates ungoverned (>= $CANDIDATE_BACKLOG_WARN)")
+# Absolute-state: a pile of member proposals held for review means "go look" — the
+# review agent should be draining these (jfv.8). Fine on the first run.
+[ "$quarantined" -ge "$QUARANTINE_REVIEW_WARN" ] && alerts+=("$quarantined member proposals awaiting review (>= $QUARANTINE_REVIEW_WARN) — run /teamkb-review or inspect brain_inbox")
 if [ "$first_run" -eq 0 ]; then
   [ "$d_superseded" -ge "$SUPERSEDE_SPIKE_WARN" ] && alerts+=("supersession spike: +$d_superseded overnight (>= $SUPERSEDE_SPIKE_WARN churn)")
   [ "$d_active" -lt 0 ] && alerts+=("active memories SHRANK by $((-d_active)) overnight — unexpected for an append-mostly store")
@@ -76,12 +95,13 @@ status="OK"; [ "${#alerts[@]}" -gt 0 ] && status="DRIFT"
 { echo "SNAP_ACTIVE=$active"; echo "SNAP_SUPERSEDED=$superseded"; echo "SNAP_AUDIT=$audit"; } > "$STATE" 2>/dev/null || true
 
 if [ "$want_json" -eq 1 ]; then
-  printf '{"status":"%s","active":%s,"superseded":%s,"total":%s,"candidates":%s,"backlog":%s,"audit_events":%s,"delta":{"active":%s,"superseded":%s,"audit":%s},"alerts":%s}\n' \
-    "$status" "$active" "$superseded" "$total_mem" "$candidates" "$backlog" "$audit" "$d_active" "$d_superseded" "$d_audit" \
+  printf '{"status":"%s","active":%s,"superseded":%s,"total":%s,"candidates":%s,"backlog":%s,"quarantined_awaiting_review":%s,"review_agent_24h":{"promoted":%s,"rejected":%s},"audit_events":%s,"delta":{"active":%s,"superseded":%s,"audit":%s},"alerts":%s}\n' \
+    "$status" "$active" "$superseded" "$total_mem" "$candidates" "$backlog" "$quarantined" "$agent_promoted" "$agent_rejected" "$audit" "$d_active" "$d_superseded" "$d_audit" \
     "$(printf '%s\n' "${alerts[@]:-}" | sed '/^$/d' | sed 's/"/\\"/g;s/.*/"&"/' | paste -sd, - | sed 's/^/[/;s/$/]/')"
 else
   echo "## Govern quality — ${status}"
   echo "curated: ${active} active (${d_active:+Δ$d_active}), ${superseded} superseded (${d_superseded:+Δ$d_superseded}); inbox backlog: ${backlog}; audit_events: ${audit} (${d_audit:+Δ$d_audit})"
+  echo "review queue: ${quarantined} member proposals awaiting review; review agent last 24h: promoted ${agent_promoted}, rejected ${agent_rejected} (spot-check + override via brain_transition)"
   echo "active by category: ${by_cat:-none}"
   echo "audit chain status: run brain_audit_verify (honest 3-state since e06.2 — benign forks are not tamper)."
   if [ "${#alerts[@]}" -gt 0 ]; then printf '⚠ DRIFT:\n'; printf '  - %s\n' "${alerts[@]}"; fi

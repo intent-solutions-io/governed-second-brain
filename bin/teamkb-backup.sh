@@ -85,6 +85,38 @@ mkdir -p "$BACKUP_DIR" "$LOGDIR"
 LOG="$LOGDIR/backup.log"
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$LOG"; }
 
+# Failure alerting + liveness (notify-lib spine). This script needs a temp-dir
+# cleanup EXIT trap (work/shm, created later; guarded here with :-), and bash
+# allows only ONE EXIT trap — so arm_fail_trap cannot be used as-is (its
+# _nl_on_exit would be clobbered by the cleanup trap below). This merged handler
+# does BOTH: capture rc FIRST (before rm resets $?), clean up, drop the liveness
+# heartbeat every run, and page #cron-failures on ANY non-zero exit — including
+# the FATAL exit-1 paths (missing DB/age/sqlite3/zstd) that fire before work/shm
+# even exist. The governed brain's ONLY DR backup must not fail silently. A
+# graceful flock-skip is exit 0 → stays silent, correctly.
+# Guarded: on a fresh clone / CI without the notify spine, an unguarded `source`
+# would abort the whole script under `set -e` BEFORE any backup runs (the digest
+# guards the same source). Absent notify-lib, alerting degrades to a no-op — never
+# a hard failure of the governed brain's ONLY DR backup.
+if [ -f "$HOME/bin/lib/notify-lib.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$HOME/bin/lib/notify-lib.sh"
+fi
+_backup_on_exit() {
+  local rc=$?
+  rm -rf "${work:-}" "${shm:-}" 2>/dev/null || true
+  mkdir -p "$HOME/.local/state/notify-lib" 2>/dev/null || true
+  : > "$HOME/.local/state/notify-lib/teamkb-backup.beat" 2>/dev/null || true
+  [ "$rc" -eq 0 ] && return 0
+  local detail="exited rc=${rc}"
+  [ -f "$LOG" ] && detail="${detail}; last log: $(tail -n 3 "$LOG" 2>/dev/null | tr '\n' ' ' | cut -c1-400)"
+  # Guarded so the EXIT trap still cleans up + drops the heartbeat even when the
+  # notify spine is absent (cron_fail undefined) — the alert just no-ops.
+  command -v cron_fail >/dev/null 2>&1 && cron_fail "teamkb-backup" "$detail"
+  return 0
+}
+trap _backup_on_exit EXIT
+
 # ── ~/.teamkb single-writer lock (e06.12 / R13 / #27) ─────────────────────────
 # Acquire an EXCLUSIVE flock BEFORE any DB/file mutation, hold it for the whole
 # run (flock auto-releases when fd 9 closes on process exit). Serializes against
@@ -112,7 +144,8 @@ command -v zstd    >/dev/null || { log "FATAL: zstd not on PATH"; exit 1; }
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
 work="$(mktemp -d)"
 shm="$(mktemp -d -p /dev/shm 2>/dev/null || mktemp -d)"
-trap 'rm -rf "$work" "$shm"' EXIT
+# (temp-dir cleanup is handled by the merged _backup_on_exit EXIT trap installed
+# near the top, so work/shm are cleaned on every exit path including early FATALs)
 stage="$work/stage"
 mkdir -p "$stage/dbs"
 arc="$work/teamkb-full-$ts.tar.zst"
@@ -222,6 +255,15 @@ fi
 if [ -n "$R2_REMOTE" ] && command -v rclone >/dev/null; then
   if rclone copy "$enc" "$R2_REMOTE/"; then
     log "off-host push OK -> $R2_REMOTE"
+    # remote retention: keep newest $RETAIN on R2 too. R2 has no bucket lifecycle rule,
+    # so without this it grows unbounded (a backup target must not accumulate forever).
+    # Filenames are UTC-timestamped -> lexical sort == chronological; delete all but newest.
+    r2_pruned=0
+    while read -r old_r2; do
+      [ -z "$old_r2" ] && continue
+      rclone deletefile "$R2_REMOTE/$old_r2" 2>/dev/null && r2_pruned=$((r2_pruned + 1)) || true
+    done < <(rclone lsf "$R2_REMOTE" 2>/dev/null | grep -E '^teamkb-full-.*\.tar\.zst\.age$' | sort | head -n -"$RETAIN")
+    [ "$r2_pruned" -gt 0 ] && log "R2 retention: pruned $r2_pruned old archive(s); retained newest $RETAIN"
   else
     log "WARN: off-host push to $R2_REMOTE FAILED (local encrypted backup retained)"
   fi

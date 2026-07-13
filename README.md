@@ -74,7 +74,7 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 | Repo | Layer | What it does |
 |------|-------|--------------|
 | **[intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os)** (`ico`) | **Compile** | Local-first knowledge OS. Ingests raw corpus (PDF / markdown / web clips) and compiles it into semantic knowledge through six passes, runs episodic research tasks, and emits a governance spool. Deterministic kernel (SQLite + JSONL) + probabilistic compiler (Claude). 5 workspace packages, Apache-2.0. |
-| **[qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb)** (INTKB) | **Govern** | Governed team-memory platform. Consumes ICO's spool, runs every candidate through dedupe → policy → promotion, keeps an append-only audit log, and exports curated memory to a searchable tree. The deterministic control plane. 6 apps + 8 packages, Apache-2.0. |
+| **[qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb)** (INTKB) | **Govern** | Governed team-memory platform. Consumes ICO's spool, runs every candidate through dedupe → policy → promotion, keeps an append-only (by protocol) audit log, and exports curated memory to a searchable tree. The deterministic control plane. 6 apps + 8 packages, Apache-2.0. |
 | **[qmd](https://github.com/tobi/qmd)** (`@tobilu/qmd`) | **Retrieve** | On-device hybrid search for markdown — BM25 + vector + LLM reranking, by [@tobi](https://github.com/tobi). The retrieval substrate. Every hit is a `qmd://<collection>/<path>` URI — the citation. |
 | **[governed-second-brain-plugin](https://github.com/jeremylongshore/governed-second-brain-plugin)** | **Package** | The thing you install. A local-first Claude Code + Cowork plugin that **bundles** the engines into one in-process stdio MCP server — cited search **and** governed capture (capture → govern → promote, with a hash-chained receipt), no daemon, no network. |
 
@@ -132,7 +132,7 @@ sequenceDiagram
     Note over ICO,Q: every hop appended to a SHA-256 hash-chained trace → receipts
 ```
 
-**The five steps:** ingest → **compile** (derive, don't dump) → spool (the tenant-scoped JSONL contract between repos) → **govern** (dedupe/policy/promote, by code) → **retrieve** (cited, on-device). Underneath all of it, an append-only trace where each event carries the hash of the one before it.
+**The five steps:** ingest → **compile** (derive, don't dump) → spool (the tenant-scoped JSONL contract between repos) → **govern** (dedupe/policy/promote, by code) → **retrieve** (cited, on-device). Underneath all of it, an append-only (by protocol) trace where each event carries the hash of the one before it.
 
 ## Architecture
 
@@ -150,7 +150,7 @@ flowchart TB
     end
     subgraph KB["INTKB — qmd-team-intent-kb (Govern)"]
         CUR["Curator — dedupe → policy → promote"]
-        AUD["Append-only audit + git-exporter"]
+        AUD["Append-only (by protocol) audit + git-exporter"]
         MCP["MCP server / REST"]
     end
     subgraph QMD["qmd (Retrieve)"]
@@ -172,7 +172,7 @@ flowchart TB
 
 ### INTKB — the governance layer
 
-[`qmd-team-intent-kb`](https://github.com/jeremylongshore/qmd-team-intent-kb) is the deterministic control plane for team memory. It ingests ICO's spool and runs every candidate through **dedupe → policy → promotion** — secret detection, trust levels, and tenant isolation all live here, enforced by code, not by a model. Promotions and rejections are written to an **append-only audit log**; curated memory is exported to a category-routed markdown tree and indexed by qmd. An MCP server exposes governed, curated-only search to agents.
+[`qmd-team-intent-kb`](https://github.com/jeremylongshore/qmd-team-intent-kb) is the deterministic control plane for team memory. It ingests ICO's spool and runs every candidate through **dedupe → policy → promotion** — secret detection, trust levels, and tenant isolation all live here, enforced by code, not by a model. Promotions and rejections are written to an **append-only (by protocol) audit log**; curated memory is exported to a category-routed markdown tree and indexed by qmd. An MCP server exposes governed, curated-only search to agents.
 
 ### qmd — the retrieval substrate
 
@@ -199,7 +199,7 @@ This is the wedge. Three artifacts make "what did the agent know and do" provabl
 }
 ```
 
-**2. The hash-chained trace** — every retrieval, promotion, and compile is one append-only JSONL event whose `prev_hash` is the SHA-256 of the previous line. Tamper with any record and the chain breaks, verifiably:
+**2. The hash-chained trace** — every retrieval, promotion, and compile is one append-only (by protocol) JSONL event whose `prev_hash` is the SHA-256 of the previous line. Tamper with any record and the chain breaks, verifiably:
 
 ```jsonc
 { "event_type": "ask.complete", "correlation_id": "…",
@@ -223,7 +223,7 @@ Honesty is the whole point of a receipt, so here's the trust model, stated per m
 
 | | **Local mode** (default) | **Shared / hosted mode** (your opt-in) |
 |---|---|---|
-| Guarantees | **Integrity + ordering + rewrite-detection** — every govern snapshots the chain head into an append-only, hash-chained anchor log committed to git; `brain_audit_verify` flags edits, deletions, reordering, **and** a silent full re-hash-forward rewrite (which the chain alone misses) | Adds **attributable, externally anchored** history once you push the anchor repo to a remote |
+| Guarantees | **Integrity + ordering + rewrite-detection** — every govern snapshots the chain head into an append-only (by protocol), hash-chained anchor log committed to git; `brain_audit_verify` flags edits, deletions, reordering, **and** a silent full re-hash-forward rewrite (which the chain alone misses) | Adds **attributable, externally anchored** history once you push the anchor repo to a remote |
 | Does **not** guarantee | Non-repudiation on its own: a local actor would now have to rewrite the chain, the anchor log, **and** the git history in lockstep (plus the remote's history, if you've pushed it) — much harder, and it leaves git evidence — but not impossible on a single, unshared machine | — |
 | How it's closed | **Implemented:** `brain_govern` commits the chain head to a git-backed anchor log; `brain_audit_verify` / `verifyAnchors` cross-check the live chain against it. **Push that repo to a remote** for cross-actor tamper-evidence | Anchored + pushed chain head + per-actor signatures |
 

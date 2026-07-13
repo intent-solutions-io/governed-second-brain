@@ -29,6 +29,15 @@ FORBIDDEN='tamper-proof|immutable|non-repudiation|blockchain'
 ALLOW_CTX="not|never|no |n't|≠|instead of|rather than|as opposed to|forbidden|avoid|isn't|aren't|doesn't|won't|do not|does not"
 ESCAPE='forbidden-words-lint:[[:space:]]*allow'
 
+# ── qualifier-required terms (2nd class, bead compile-then-govern-6ps.12): TRUE of
+# the Bob's Big Brain chain, but only in a QUALIFIED sense — append-only *by
+# protocol/convention* (not filesystem-enforced), an ordered log with *disclosed
+# same-timestamp CHAIN_FORKs*. A bare positive assertion drifts toward the forbidden
+# "immutable", so it passes ONLY with an honest qualifier (protocol / disclosed-forks
+# / the hash-chain tamper-EVIDENCE framing), a negation, or the escape.
+QUALIFIED='append-only|ordered log'
+QUALIFIER_CTX='by protocol|by convention|protocol-level|disclosed|same-timestamp|CHAIN_FORK|benign fork|tamper-evident|hash-chained|hash of the|prev_hash|rewrite-detection|not [^.]*(enforced|filesystem|storage)'
+
 violations=0
 for f in "${FILES[@]}"; do
   [ -f "$f" ] || { echo "lint-forbidden-words: skip (not found): $f" >&2; continue; }
@@ -43,6 +52,19 @@ for f in "${FILES[@]}"; do
       "$f" "$lineno" "$(printf '%s' "$text" | sed 's/^[[:space:]]*//' | cut -c1-160)"
     violations=$((violations + 1))
   done < <(grep -inIE "$FORBIDDEN" "$f" || true)
+
+  # second pass — qualifier-required terms (6ps.12): flag a BARE append-only /
+  # ordered log; pass if an honest qualifier, a negation, or the escape is on the line.
+  while IFS= read -r hit; do
+    lineno="${hit%%:*}"
+    text="${hit#*:}"
+    if printf '%s' "$text" | grep -qiE "$QUALIFIER_CTX"; then continue; fi
+    if printf '%s' "$text" | grep -qiE "$ALLOW_CTX"; then continue; fi
+    if printf '%s' "$text" | grep -qiE "$ESCAPE"; then continue; fi
+    printf '  %s:%s  qualifier-required term (add "by protocol" / "disclosed same-timestamp forks" / a hash-chain framing, or negate it):\n    %s\n' \
+      "$f" "$lineno" "$(printf '%s' "$text" | sed 's/^[[:space:]]*//' | cut -c1-160)"
+    violations=$((violations + 1))
+  done < <(grep -inIE "$QUALIFIED" "$f" || true)
 done
 
 if [ "$violations" -gt 0 ]; then

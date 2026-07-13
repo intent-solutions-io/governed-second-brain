@@ -31,9 +31,13 @@
 #   4. age-encrypt to TWO recipients (dev-box SOPS key + VPS host key) so it is
 #      restorable even if the dev box is lost; shred the plaintext archive.
 #   5. restore round-trip  -> decrypt + extract on tmpfs (/dev/shm); both DBs
-#                             integrity_check + table-count match, and Tier-A
-#                             presence is asserted. The backup is KEPT ONLY if it
-#                             provably restores. An unrestorable backup is deleted.
+#                             integrity_check + table-count match, Tier-A presence
+#                             is asserted, AND the restored external anchor is
+#                             re-verified against the restored chain with the
+#                             standalone verifier (the trust root must survive
+#                             CONSISTENT, not just present). The backup is KEPT
+#                             ONLY if it provably restores. An unrestorable
+#                             backup is deleted.
 #   6. off-host push -> (a) VPS over the tailnet (default — the VPS holds a
 #                        decrypting key) via rsync, with a sha256 byte-match check
 #                        and remote retention; and (b) Cloudflare R2 via rclone
@@ -231,12 +235,34 @@ fi
 { [ ! -d "$TEAMKB_HOME/audit" ] || { [ -s "$rdir/audit/anchors.jsonl" ] && [ "$(find "$rdir/audit" -type f | wc -l)" = "$anchor_files" ]; }; } || fail="$fail anchor_missing"
 { [ ! -e "$TEAMKB_HOME/tokens.json" ] || [ -f "$rdir/tokens.json" ]; } || fail="$fail tokens_missing"
 
+# RE-VERIFY the restored anchor against the restored chain (bead compile-then-govern-6ps.8).
+# Presence + file-count (above) prove the trust root was CARRIED; they do NOT prove it
+# is still CONSISTENT with the restored DB. Run the standalone, zero-dependency verifier
+# (the exact one a skeptic runs) against the restored anchors.jsonl + restored teamkb.db:
+# a FAIL (exit 1 = HISTORY_REWRITTEN / hash / linkage break) means the receipts trust root
+# did NOT survive the restore intact — treat the backup as unrestorable. WARN (exit 0, e.g.
+# the restored audit repo has no remote) is fine. Absent verifier / node → NOTE, not fail
+# (the presence gate above still stands, and a backup must not hard-fail on optional tooling).
+ANCHOR_VERIFIER="${TEAMKB_ANCHOR_VERIFIER:-$HOME/000-projects/governed-second-brain-plugin/scripts/verify-anchors.mjs}"
+if [ -d "$TEAMKB_HOME/audit" ] && [ -s "$rdir/audit/anchors.jsonl" ]; then
+  if [ -f "$ANCHOR_VERIFIER" ] && command -v node >/dev/null 2>&1; then
+    node "$ANCHOR_VERIFIER" --anchors "$rdir/audit/anchors.jsonl" --db "$rdir/dbs/teamkb.db" >/dev/null 2>&1 && vrc=0 || vrc=$?
+    if [ "$vrc" = "1" ]; then
+      fail="$fail anchor_reverify_failed"
+    elif [ "$vrc" != "0" ]; then
+      log "NOTE: restored-anchor re-verify inconclusive (verifier exit $vrc) — presence gate still enforced"
+    fi
+  else
+    log "NOTE: standalone anchor verifier not found ($ANCHOR_VERIFIER) or node absent — restored-anchor re-verify skipped (presence gate still enforced)"
+  fi
+fi
+
 if [ -n "$fail" ]; then
   log "FATAL: restore round-trip FAILED —$fail — discarding unrestorable backup"
   rm -f "$enc"
   exit 1
 fi
-log "restore round-trip OK: govern+compile integrity verified, corpus($raw_files)/audit($audit_files)/anchor($anchor_files)/tokens present on tmpfs"
+log "restore round-trip OK: govern+compile integrity verified, corpus($raw_files)/audit($audit_files)/anchor($anchor_files)/tokens present on tmpfs, restored anchor re-verified against restored chain"
 
 # 5b. refresh the umbrella system map's live-stats block now that the brain is
 #     provably backed up. Non-fatal: the map is documentation, not the backup.

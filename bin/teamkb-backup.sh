@@ -94,7 +94,14 @@ log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$LOG"; }
 # the FATAL exit-1 paths (missing DB/age/sqlite3/zstd) that fire before work/shm
 # even exist. The governed brain's ONLY DR backup must not fail silently. A
 # graceful flock-skip is exit 0 → stays silent, correctly.
-source "$HOME/bin/lib/notify-lib.sh"
+# Guarded: on a fresh clone / CI without the notify spine, an unguarded `source`
+# would abort the whole script under `set -e` BEFORE any backup runs (the digest
+# guards the same source). Absent notify-lib, alerting degrades to a no-op — never
+# a hard failure of the governed brain's ONLY DR backup.
+if [ -f "$HOME/bin/lib/notify-lib.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$HOME/bin/lib/notify-lib.sh"
+fi
 _backup_on_exit() {
   local rc=$?
   rm -rf "${work:-}" "${shm:-}" 2>/dev/null || true
@@ -103,7 +110,9 @@ _backup_on_exit() {
   [ "$rc" -eq 0 ] && return 0
   local detail="exited rc=${rc}"
   [ -f "$LOG" ] && detail="${detail}; last log: $(tail -n 3 "$LOG" 2>/dev/null | tr '\n' ' ' | cut -c1-400)"
-  cron_fail "teamkb-backup" "$detail"
+  # Guarded so the EXIT trap still cleans up + drops the heartbeat even when the
+  # notify spine is absent (cron_fail undefined) — the alert just no-ops.
+  command -v cron_fail >/dev/null 2>&1 && cron_fail "teamkb-backup" "$detail"
   return 0
 }
 trap _backup_on_exit EXIT

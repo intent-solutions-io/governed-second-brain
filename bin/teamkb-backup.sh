@@ -246,11 +246,17 @@ fi
 ANCHOR_VERIFIER="${TEAMKB_ANCHOR_VERIFIER:-$HOME/000-projects/governed-second-brain-plugin/scripts/verify-anchors.mjs}"
 if [ -d "$TEAMKB_HOME/audit" ] && [ -s "$rdir/audit/anchors.jsonl" ]; then
   if [ -f "$ANCHOR_VERIFIER" ] && command -v node >/dev/null 2>&1; then
-    node "$ANCHOR_VERIFIER" --anchors "$rdir/audit/anchors.jsonl" --db "$rdir/dbs/teamkb.db" >/dev/null 2>&1 && vrc=0 || vrc=$?
-    if [ "$vrc" = "1" ]; then
-      fail="$fail anchor_reverify_failed"
-    elif [ "$vrc" != "0" ]; then
-      log "NOTE: restored-anchor re-verify inconclusive (verifier exit $vrc) — presence gate still enforced"
+    # if/else (not `A && B || C`) so the verifier's exit is evaluated as the `if`
+    # condition — safe under `set -e`, and $? in the else branch is the verifier's.
+    if node "$ANCHOR_VERIFIER" --anchors "$rdir/audit/anchors.jsonl" --db "$rdir/dbs/teamkb.db" >/dev/null 2>&1; then
+      : # exit 0 = PASS/WARN — the restored anchor re-verifies against the restored chain
+    else
+      vrc=$?
+      if [ "$vrc" = "1" ]; then
+        fail="$fail anchor_reverify_failed"
+      else
+        log "NOTE: restored-anchor re-verify inconclusive (verifier exit $vrc) — presence gate still enforced"
+      fi
     fi
   else
     log "NOTE: standalone anchor verifier not found ($ANCHOR_VERIFIER) or node absent — restored-anchor re-verify skipped (presence gate still enforced)"

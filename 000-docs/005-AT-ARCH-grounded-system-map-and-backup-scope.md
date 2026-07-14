@@ -104,7 +104,7 @@ raw corpus (brain/raw/)
   `brain_capture`/`brain_govern`/`brain_transition` (write). Daemon-free, zero network in local mode.
 
 ### Distribution — two channels (don't conflate them)
-- **Public plugin** → `jeremylongshore/governed-second-brain-plugin` (personal). The single
+- **Public plugin** → `jeremylongshore/bobs-big-brain-plugin` (personal). The single
   installable artifact, with two runtime modes dispatched by `TEAMKB_API_URL`: **local** (default,
   in-process `~/.teamkb`, full `brain_*` surface) and **team** (remote proxy to the one shared brain
   over the tailnet). Shipped as npm `governed-second-brain` (SLSA-provenanced) + a self-hosted

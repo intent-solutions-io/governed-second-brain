@@ -78,6 +78,10 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 | **[qmd](https://github.com/tobi/qmd)** (`@tobilu/qmd`) | **Retrieve** | On-device hybrid search for markdown — BM25 + vector + LLM reranking, by [@tobi](https://github.com/tobi). The retrieval substrate. Every hit is a `qmd://<collection>/<path>` URI — the citation. |
 | **[bobs-big-brain-plugin](https://github.com/jeremylongshore/bobs-big-brain-plugin)** | **Package** | The thing you install. A local-first Claude Code + Cowork plugin that **bundles** the engines into one in-process stdio MCP server — cited search **and** governed capture (capture → govern → promote, with a hash-chained receipt), no daemon, no network. |
 
+**Powered by [tobi/qmd](https://github.com/tobi/qmd).** We pin `@tobilu/qmd`, track bumps with Dependabot, and gate upgrades with canary + integration tests. We **do not fork** the search engine — Bob's Big Brain is the product surround (compile + govern + receipts + plugin).
+
+**Operator tip (local team brain):** bare `qmd` uses your personal `~/.cache/qmd`. The team index lives under `~/.teamkb/qmd-index/<tenant>/`. From an [qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb) checkout: `./scripts/bbb-qmd status` (pinned `@tobilu/qmd` binary + team XDG) and `pnpm search-canary`. Full runbook: [000-docs/042-OD-OPSM-bbb-qmd-operator-runbook.md](https://github.com/jeremylongshore/qmd-team-intent-kb/blob/main/000-docs/042-OD-OPSM-bbb-qmd-operator-runbook.md) (lands with INTKB PR that adds `bbb-qmd`).
+
 **How the repos fit together** — this umbrella maps them; the plugin bundles the engines; the engines + qmd form the compile → govern → retrieve pipeline. Each box is its own independently released repo:
 
 ```mermaid
@@ -85,7 +89,7 @@ The category optimizes one axis: recall. We compete on a different one: **govern
   'primaryColor':'#0ea5e9','primaryBorderColor':'#0284c7','primaryTextColor':'#ffffff',
   'lineColor':'#38bdf8','clusterBkg':'#0c192910','clusterBorder':'#0ea5e9'}}}%%
 flowchart TB
-    UMB["<b>governed-second-brain</b><br/>umbrella · the map (you are here)"]
+    UMB["<b>bobs-big-brain-umbrella</b><br/>the map (you are here)"]
     subgraph ENG["Engines"]
         ICO["<b>intentional-cognition-os</b><br/>ICO · compile"]
         INTKB["<b>qmd-team-intent-kb</b><br/>INTKB · govern"]

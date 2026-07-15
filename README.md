@@ -80,7 +80,7 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 
 **Powered by [tobi/qmd](https://github.com/tobi/qmd).** We pin `@tobilu/qmd`, track bumps with Dependabot, and gate upgrades with canary + integration tests. We **do not fork** the search engine — Bob's Big Brain is the product surround (compile + govern + receipts + plugin).
 
-**Operator tip (local team brain):** bare `qmd` uses your personal `~/.cache/qmd`. The team index lives under `~/.teamkb/qmd-index/<tenant>/`. From an INTKB checkout: `./scripts/bbb-qmd status` (pinned binary + team XDG) and `pnpm search-canary`. Full runbook: [qmd-team-intent-kb `042-OD-OPSM-bbb-qmd-operator-runbook.md`](https://github.com/jeremylongshore/qmd-team-intent-kb/blob/main/000-docs/042-OD-OPSM-bbb-qmd-operator-runbook.md).
+**Operator tip (local team brain):** bare `qmd` uses your personal `~/.cache/qmd`. The team index lives under `~/.teamkb/qmd-index/<tenant>/`. From an [qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb) checkout: `./scripts/bbb-qmd status` (pinned `@tobilu/qmd` binary + team XDG) and `pnpm search-canary`. Full runbook: [000-docs/042-OD-OPSM-bbb-qmd-operator-runbook.md](https://github.com/jeremylongshore/qmd-team-intent-kb/blob/main/000-docs/042-OD-OPSM-bbb-qmd-operator-runbook.md) (lands with INTKB PR that adds `bbb-qmd`).
 
 **How the repos fit together** — this umbrella maps them; the plugin bundles the engines; the engines + qmd form the compile → govern → retrieve pipeline. Each box is its own independently released repo:
 

@@ -25,8 +25,11 @@ repository. This repo has no application build or unit-test suite. Validate
 brand-surface changes with:
 
 ```bash
-bash scripts/lint-forbidden-words.sh README.md
+bash scripts/lint-forbidden-words.sh <changed-file.md>   # e.g. README.md
 ```
+
+CI enforces this lint on `README.md`; run it locally on any brand-surface
+markdown you touch.
 
 Run `bash scripts/aggregate-changelogs.sh` only when refreshing derived
 changelogs; it needs network access and an optional private-repository token.

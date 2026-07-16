@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-The **umbrella / landing repo** for **Governed Second Brain** — the local-first knowledge stack
+The **umbrella / landing repo** for **Bob's Big Brain** (the public product name since 2026-07-10,
+PR #37; formerly "Governed Second Brain") — the local-first knowledge stack
 built on the *compile, then govern* architecture. (Renamed from `compile-then-govern` on
 2026-06-16; the GitHub repo is now `intent-solutions-io/bobs-big-brain-umbrella` and the old URL
 auto-redirects. The local working directory was renamed to match — it is
@@ -26,7 +27,7 @@ that makes the umbrella the one place to operate the whole stack from.
 
 | Layer | Repo | Owner |
 |---|---|---|
-| Umbrella / landing (this repo) | `governed-second-brain` | `intent-solutions-io` (company) |
+| Umbrella / landing (this repo) | `bobs-big-brain-umbrella` | `intent-solutions-io` (company) |
 | Public plugin (installable code) | `bobs-big-brain-plugin` | `jeremylongshore` (personal) |
 | Engines | `intentional-cognition-os` (ICO · compile) · `qmd-team-intent-kb` (INTKB · govern) | `jeremylongshore` (personal) |
 
@@ -81,7 +82,7 @@ flagship repos:
 | Repo | Layer | Role |
 |------|-------|------|
 | [`intentional-cognition-os`](https://github.com/jeremylongshore/intentional-cognition-os) (ICO) | **Compile** | Local-first knowledge OS. Deterministic kernel (SQLite + JSONL) + probabilistic compiler (Claude). 6 compiler passes → emits a governance spool. |
-| [`qmd-team-intent-kb`](https://github.com/jeremylongshore/qmd-team-intent-kb) (INTKB) | **Govern** | Deterministic control plane. Consumes ICO's spool, runs dedupe → policy → promotion, append-only audit log. |
+| [`qmd-team-intent-kb`](https://github.com/jeremylongshore/qmd-team-intent-kb) (INTKB) | **Govern** | Deterministic control plane. Consumes ICO's spool, runs dedupe → policy → promotion, hash-chained append-only audit log. |
 | [`qmd`](https://github.com/tobi/qmd) (by @tobi) | **Retrieve** | On-device hybrid search (BM25 + vector + LLM rerank). Pinned upstream dependency; every result is a `qmd://` citation. |
 | [`bobs-big-brain-plugin`](https://github.com/jeremylongshore/bobs-big-brain-plugin) | **Package** | The installable Claude Code + Cowork plugin (local stdio MCP, read + write). Bundles the engines; this umbrella points at it. |
 
@@ -95,8 +96,9 @@ and the correct backup/DR scope are **code-verified** in
 [`000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md`](000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md)
 (start there — don't re-derive from scratch; also the auto-memory `governed-brain-architecture-and-backup-scope`). Key facts:
 
-- **The whole live brain is ONE directory on the dev box (itself a VPS): `~/.teamkb/`** (~130 MB and
-  growing; exact live size + row counts in [`005-AT-ARCH` §0](000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md), auto-updated each backup).
+- **The whole live brain is ONE directory on the dev box (itself a VPS): `~/.teamkb/`** (~860 MB as
+  of 2026-07-16 — don't trust a number written here; the live size + row counts auto-update in
+  [`005-AT-ARCH` §0](000-docs/005-AT-ARCH-grounded-system-map-and-backup-scope.md) on each backup).
   The production VPS `intentsolutions` holds **no brain** (verified). Two SQLite DBs: ICO
   `brain/.ico/state.db` (compile) + INTKB `teamkb.db` (govern). Plus `brain/raw/` (corpus = source of
   truth), `brain/wiki/` (compiled Markdown, expensive-derived), `brain/audit/` + `audit_events`
@@ -116,12 +118,12 @@ and the correct backup/DR scope are **code-verified** in
   `TEAMKB_API_URL`: **local** (default, in-process `~/.teamkb`) and **team** (remote proxy to the live
   brain over the tailnet with a per-user token). **Local mode exposes the FULL `brain_*` surface
   in-process** (read: `brain_search` / `brain_status` / `brain_audit_verify`; write: `brain_capture` /
-  `brain_govern` / `brain_transition`); **team mode today proxies only the read tool `brain_search`** to
-  the remote brain (`src/remote-server.ts`) — the remote write path follows as the API + `650.2` mature.
-  Only the DATA + `TEAMKB_API_URL` + token are private. What's left is **activation/publish, not
-  architecture**: `650.2` (point team mode at the live URL + per-user token activation, extend the remote
-  surface beyond search), `650.3` (publish to the marketplaces), `650.6` (API hardening: token
-  expiry/rotation, anon health probe, dedicated tailnet VM).
+  `brain_govern` / `brain_transition`); **team mode proxies `brain_search` plus the write tools
+  `brain_capture` (member) and `brain_transition` (admin)** to the remote brain
+  (`src/remote-server.ts`) — the team write loop shipped via plugin PR #8 (`650.2` closed 2026-06-25).
+  Only the DATA + `TEAMKB_API_URL` + token are private. What's left is **publish + hardening, not
+  architecture**: `650.3` (publish to the marketplaces; deferred → 2026-09-01), `650.6` (API hardening:
+  token expiry/rotation, anon health probe, dedicated tailnet VM; deferred → 2026-08-15).
 - **Cloudflare R2 is NOT the bridge — it is off-host BACKUP only (`c5k.6`).** The bridge is an
   authenticated, governed HTTP API (above); R2 is dumb blob storage with no auth, no governed write-path,
   no live query proxy — wrong tool for the bridge. The genuinely-deferred **distributed** model (each
@@ -170,8 +172,10 @@ forward, and `ico audit verify` passes again. So the README carries a "What the 
 *not* do" trust-model box — local = integrity + ordering; cross-actor non-repudiation needs the
 external chain-head anchor (sign via `git-exporter` / OpenTimestamps), which is **implemented**
 and verifiable via `ico audit verify` (`brain_govern` commits the chain head; `ico audit verify` /
-`brain_audit_verify` cross-check it). Keep that box honest. **Forbidden words:**
-tamper-proof, immutable, non-repudiation (for local mode), blockchain.
+`brain_audit_verify` cross-check it). Keep that box honest. **Forbidden words** (never claim these): tamper-proof, immutable, non-repudiation (for local mode), blockchain.
+This honesty discipline is **CI-enforced on the README** (`.github/workflows/docs-honesty.yml`);
+check any brand-surface edit locally with `bash scripts/lint-forbidden-words.sh <file>`.
+Bare "append-only" / "ordered log" claims are linted too — qualify them (by protocol / hash-chained / disclosed same-timestamp forks) or negate them.
 
 ## Editing Conventions
 
@@ -190,6 +194,9 @@ tamper-proof, immutable, non-repudiation (for local mode), blockchain.
   in this README is sourced from it, keep them consistent.
 - **Status table** (versions / licenses near the bottom of the README) drifts as the flagships
   release. Verify against the actual repo tags before changing version numbers.
+- **[`AGENTS.md`](AGENTS.md)** is the concise contributor guide (scope boundary, validation,
+  review flow) for non-Claude agents and outside contributors — keep it consistent with this file
+  when either changes.
 
 
 ## Retrieval backend decision (2026-06-18)

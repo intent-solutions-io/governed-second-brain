@@ -1,96 +1,57 @@
-# Agent Instructions
+# Repository Guidelines
 
-This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
+## Scope and Structure
 
-> **Architecture in one line:** Issues live in a local Dolt database
-> (`.beads/dolt/`); cross-machine sync uses `bd dolt push/pull` (a
-> git-compatible protocol), stored under `refs/dolt/data` on your git
-> remote — separate from `refs/heads/*` where your code lives.
-> `.beads/issues.jsonl` is a passive export, not the wire protocol.
->
-> See [SYNC_CONCEPTS.md](https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md)
-> for the one-screen overview and anti-patterns (don't treat JSONL as the
-> source of truth; don't `bd import` during normal operation; don't
-> reach for third-party Dolt hosting before trying the default).
+This repository is the documentation-first umbrella for Bob's Big Brain. It
+contains the public product narrative and cross-repository working surface; it
+does not contain application code. Keep implementation, runtime configuration,
+and code-level security work in the owning repository:
 
-## Quick Reference
+- `intentional-cognition-os` (ICO) compiles source material into a spool.
+- `qmd-team-intent-kb` (INTKB) deterministically governs that spool.
+- `bobs-big-brain-plugin` packages the local and team experiences.
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work atomically
-bd close <id>         # Complete work
-bd dolt push          # Push beads data to remote
-```
+At the root, `README.md` is the landing page, `000-docs/` holds architecture,
+decision, risk, and runbook documents, and `assets/` holds committed banners
+and social cards. `repos.yml` is the topology source of truth; `bin/gsb` reads
+it to operate across the independent repositories. `changelogs/` is generated
+from each repository's `CHANGELOG.md` and must not be edited by hand.
 
-## Non-Interactive Shell Commands
+## Working Locally
 
-**ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.
-
-Shell commands like `cp`, `mv`, and `rm` may be aliased to include `-i` (interactive) mode on some systems, causing the agent to hang indefinitely waiting for y/n input.
-
-**Use these forms instead:**
-```bash
-# Force overwrite without prompting
-cp -f source dest           # NOT: cp source dest
-mv -f source dest           # NOT: mv source dest
-rm -f file                  # NOT: rm file
-
-# For recursive operations
-rm -rf directory            # NOT: rm -r directory
-cp -rf source dest          # NOT: cp -r source dest
-```
-
-**Other commands that may prompt:**
-- `scp` - use `-o BatchMode=yes` for non-interactive
-- `ssh` - use `-o BatchMode=yes` to fail instead of prompting
-- `apt-get` - use `-y` flag
-- `brew` - use `HOMEBREW_NO_AUTO_UPDATE=1` env var
-
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
-## Beads Issue Tracker
-
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
+Run `./bin/gsb map` to orient yourself, `./bin/gsb status` for cross-repo
+state, and `./bin/gsb sync` only when you intend to clone or pull every mapped
+repository. This repo has no application build or unit-test suite. Validate
+brand-surface changes with:
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
+bash scripts/lint-forbidden-words.sh <changed-file.md>   # e.g. README.md
 ```
 
-### Rules
+CI enforces this lint on `README.md`; run it locally on any brand-surface
+markdown you touch.
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+Run `bash scripts/aggregate-changelogs.sh` only when refreshing derived
+changelogs; it needs network access and an optional private-repository token.
+For code changes, run the tests and quality gates in the owning engine or
+plugin repository instead.
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
+## Documentation and Style
 
-## Session Completion
+Use concise Markdown, sentence-case headings, descriptive links, and existing
+`NNN-XX-CODE-topic.md` names under `000-docs/`. Preserve generated markers in
+`000-docs/005-AT-ARCH-...` and never hand-edit `changelogs/`. Verify Mermaid
+or banner changes on GitHub's rendered view.
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+Keep the trust model precise: the audit trail is **tamper-evident**—local mode
+provides integrity, ordering, and rewrite detection. Never describe local mode as tamper-proof, immutable, a blockchain, or non-repudiable.
 
-**MANDATORY WORKFLOW:**
+## Issues, Commits, and Pull Requests
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
+Use Beads for every task: run `bd prime`, create or claim work with `bd`, and
+close it when complete. The Dolt database is authoritative; do not treat
+`.beads/issues.jsonl` as a sync mechanism. Use conventional commits such as
+`docs(topology): clarify plugin ownership`. Keep pull requests focused; for a
+docs-only change, state **What**, **Why**, and the linked Bead or issue. Include
+rendering evidence for visual changes and follow the session-close protocol
+from `bd prime` for changed work.

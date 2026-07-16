@@ -1,6 +1,6 @@
 <!-- fetched by CI — DO NOT HAND-EDIT. Source of truth: the repo's own CHANGELOG.md. -->
 <!-- source: https://raw.githubusercontent.com/jeremylongshore/qmd-team-intent-kb/main/CHANGELOG.md -->
-<!-- fetched-at: 2026-07-13T08:39:16Z -->
+<!-- fetched-at: 2026-07-16T20:50:45Z -->
 
 # Changelog
 
@@ -11,8 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Candidate intake: id-first idempotency + created vs already_exists knowledge.**
+  `CandidateService.intake` now short-circuits on existing **id** (same tenant) before content-hash
+  dedup, so session-stable client ids collapse re-distilled retries. Returns
+  `{ candidate, intake: 'created' | 'already_exists' }`; `POST /api/candidates` responds **201** +
+  `intake: created` or **200** + `intake: already_exists`. Skips a second `proposed` receipt on
+  collapse. Closes the Property 1/2 seam called out in the fire-and-forget writer review.
+
 ### Added
 
+- **`scripts/bbb-qmd`** — operator wrapper that runs the pinned `@tobilu/qmd` against the team brain
+  index (`~/.teamkb/qmd-index/<tenant>` via XDG), not personal `~/.cache/qmd`. `pnpm bbb-qmd --which`
+  shows binary + version + tenant paths. Ride Tobi's releases via Dependabot pin; do not fork qmd.
+- **Operator runbook** `000-docs/042-OD-OPSM-bbb-qmd-operator-runbook.md` and **onboarding Q-bank**
+  `000-docs/043-OD-EVAL-onboarding-qbank-v1.md` for day-1 retrieval regression scoring.
+- **Search canary** expanded with SOPS / beads / Contabo VPS known-positive controls (fail loud if
+  estate themes disappear from the index).
+- **`pnpm eval:onboarding`** (`scripts/eval-onboarding-qbank.sh`) — day-1 outsider keyword probes via
+  `bbb-qmd`; exit 0 at ≥80% (baseline after day-1 pack: **23/24**).
 - **B1 auto-govern primitives** (`packages/store` + `packages/curator`) — a **marker-based** inbox:
   `CandidateStatus` widened so insert-only `candidates` are retired by a terminal status change,
   **never deleted** (the review queue + only copy is preserved), plus tenant-scoped content-hash

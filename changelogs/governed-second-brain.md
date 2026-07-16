@@ -1,6 +1,6 @@
 <!-- fetched by CI — DO NOT HAND-EDIT. Source of truth: the repo's own CHANGELOG.md. -->
 <!-- source: https://raw.githubusercontent.com/intent-solutions-io/governed-second-brain/main/CHANGELOG.md -->
-<!-- fetched-at: 2026-07-13T08:39:16Z -->
+<!-- fetched-at: 2026-07-16T20:50:45Z -->
 
 # Changelog
 
@@ -42,7 +42,7 @@ engine and plugin repos. Format based on
 ### Changed
 
 - Repo renamed `intent-solutions-io/compile-then-govern` →
-  `intent-solutions-io/governed-second-brain` (the old URL auto-redirects).
+  `intent-solutions-io/bobs-big-brain-umbrella` (the old URL auto-redirects).
 - Audit trail framed as **tamper-evident** (detection), never tamper-proof; the
   external chain-head anchor is implemented and verifiable via `ico audit verify`.
 

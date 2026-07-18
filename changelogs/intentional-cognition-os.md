@@ -1,10 +1,16 @@
 <!-- fetched by CI — DO NOT HAND-EDIT. Source of truth: the repo's own CHANGELOG.md. -->
 <!-- source: https://raw.githubusercontent.com/jeremylongshore/intentional-cognition-os/main/CHANGELOG.md -->
-<!-- fetched-at: 2026-07-18T14:50:08Z -->
+<!-- fetched-at: 2026-07-18T17:49:38Z -->
 
 # Changelog
 
 ## [Unreleased]
+
+## [v1.22.0] - 2026-07-18
+
+### Changed
+
+- **Releases are now PR-gated.** The auto-release workflow used to push a `chore(release)` commit directly to `main`, which the branch-protection required-check gate (CodeQL) now correctly declines — leaving orphan tags. The `push: [main]` auto-trigger is removed; releases go through a version-bump PR (which passes CodeQL like any change) + a tag, matching the rest of the stack. The `workflow_dispatch` path is retained. (see `.github/workflows/release.yml`)
 
 ### Added
 

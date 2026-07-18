@@ -1,6 +1,6 @@
 <!-- fetched by CI — DO NOT HAND-EDIT. Source of truth: the repo's own CHANGELOG.md. -->
 <!-- source: https://raw.githubusercontent.com/jeremylongshore/bobs-big-brain-plugin/main/CHANGELOG.md -->
-<!-- fetched-at: 2026-07-18T13:46:24Z -->
+<!-- fetched-at: 2026-07-18T14:50:08Z -->
 
 # Changelog
 
@@ -11,6 +11,8 @@ installable Claude Code + Cowork plugin (a local stdio MCP server); the engines 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.2.0] - 2026-07-18
 
 ### Changed
 

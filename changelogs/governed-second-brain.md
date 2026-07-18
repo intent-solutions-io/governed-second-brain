@@ -1,6 +1,6 @@
 <!-- fetched by CI — DO NOT HAND-EDIT. Source of truth: the repo's own CHANGELOG.md. -->
 <!-- source: https://raw.githubusercontent.com/intent-solutions-io/governed-second-brain/main/CHANGELOG.md -->
-<!-- fetched-at: 2026-07-18T13:46:24Z -->
+<!-- fetched-at: 2026-07-18T14:50:08Z -->
 
 # Changelog
 

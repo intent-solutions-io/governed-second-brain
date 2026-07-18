@@ -1,6 +1,6 @@
 <!-- fetched by CI — DO NOT HAND-EDIT. Source of truth: the repo's own CHANGELOG.md. -->
 <!-- source: https://raw.githubusercontent.com/intent-solutions-io/governed-second-brain/main/CHANGELOG.md -->
-<!-- fetched-at: 2026-07-18T13:42:03Z -->
+<!-- fetched-at: 2026-07-18T13:46:06Z -->
 
 # Changelog
 
@@ -11,6 +11,31 @@ engine and plugin repos. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
+
+### Added
+
+- **Advisory MiniMax-M3 PR reviewer** for this docs/brand-surface repo, plus
+  `REVIEW.md` (the reviewer law tailored for a docs repo). Two independent lanes:
+  an honesty/accuracy lane and a claims-audit lane that catches forbidden-word
+  synonyms and version-table drift the mechanical `docs-honesty` regex lint
+  cannot. Advisory only — never a required check; the blocking gate stays the
+  honesty lint + markdownlint + link check. (#57)
+
+### Changed
+
+- **Private plugin marketplace retired from the topology + system map**: the
+  redirect-only private repo `intent-solutions-io/team-intent-claude-plugins`
+  was archived (2026-07-17), so `repos.yml` (now 4 repos, dropped the dead
+  `marketplace` layer), `CLAUDE.md`, `005-AT-ARCH`, and `007-AT-SMAP` were
+  corrected to a single public-plugin distribution channel with local + team
+  runtime modes ("team" is a mode of the public plugin, not a separate build). (#58)
+- **README accuracy pass** against current flagship state: ICO v1.14.0 →
+  v1.21.0, plugin v1.1.1 → v1.1.2, INTKB "8 packages" → "9 packages"; the
+  retrieval description now states the delivered serving path is deterministic
+  and LLM-free — qmd BM25 fused with a native in-process FTS5 backend via
+  reciprocal-rank fusion (RRF, k=60) + freshness/category reranking, replacing
+  the "BM25 + vector + LLM reranking" framing that implied the brain serves
+  qmd's hybrid+model path. Thesis, honesty box, and structure preserved. (#59)
 
 ## [2026-07-16] — Bob's Big Brain rename, contributor surface & changelog automation
 

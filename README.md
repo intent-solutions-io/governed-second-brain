@@ -74,8 +74,8 @@ The category optimizes one axis: recall. We compete on a different one: **govern
 | Repo | Layer | What it does |
 |------|-------|--------------|
 | **[intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os)** (`ico`) | **Compile** | Local-first knowledge OS. Ingests raw corpus (PDF / markdown / web clips) and compiles it into semantic knowledge through six passes, runs episodic research tasks, and emits a governance spool. Deterministic kernel (SQLite + JSONL) + probabilistic compiler (Claude). 5 workspace packages, Apache-2.0. |
-| **[qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb)** (INTKB) | **Govern** | Governed team-memory platform. Consumes ICO's spool, runs every candidate through dedupe → policy → promotion, keeps a hash-chained, append-only audit log, and exports curated memory to a searchable tree. The deterministic control plane. 6 apps + 8 packages, Apache-2.0. |
-| **[qmd](https://github.com/tobi/qmd)** (`@tobilu/qmd`) | **Retrieve** | On-device hybrid search for markdown — BM25 + vector + LLM reranking, by [@tobi](https://github.com/tobi). The retrieval substrate. Every hit is a `qmd://<collection>/<path>` URI — the citation. |
+| **[qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb)** (INTKB) | **Govern** | Governed team-memory platform. Consumes ICO's spool, runs every candidate through dedupe → policy → promotion, keeps a hash-chained, append-only audit log, and exports curated memory to a searchable tree. The deterministic control plane. 6 apps + 9 packages, Apache-2.0. |
+| **[qmd](https://github.com/tobi/qmd)** (`@tobilu/qmd`) | **Retrieve** | On-device search for markdown, by [@tobi](https://github.com/tobi). The retrieval substrate. The brain's serving path is **deterministic and model-free**: qmd's keyword (BM25) results are fused with a native in-process FTS5 (BM25) backend via reciprocal-rank fusion (RRF, k=60), then freshness/category reranked — no query-time LLM call. Every hit is a `qmd://<collection>/<path>` URI — the citation. |
 | **[bobs-big-brain-plugin](https://github.com/jeremylongshore/bobs-big-brain-plugin)** | **Package** | The thing you install. A local-first Claude Code + Cowork plugin that **bundles** the engines into one in-process stdio MCP server — cited search **and** governed capture (capture → govern → promote, with a hash-chained receipt), no daemon, no network. |
 
 **Powered by [tobi/qmd](https://github.com/tobi/qmd).** We pin `@tobilu/qmd`, track bumps with Dependabot, and gate upgrades with canary + integration tests. We **do not fork** the search engine — Bob's Big Brain is the product surround (compile + govern + receipts + plugin).
@@ -158,7 +158,7 @@ flowchart TB
         MCP["MCP server / REST"]
     end
     subgraph QMD["qmd (Retrieve)"]
-        IDX["BM25 + vector index"]
+        IDX["BM25 retrieval<br/>qmd + native FTS5, RRF-fused"]
     end
     D --> C --> K
     K -->|spool emit| CUR
@@ -180,7 +180,7 @@ flowchart TB
 
 ### qmd — the retrieval substrate
 
-[`qmd`](https://github.com/tobi/qmd) (by [@tobi](https://github.com/tobi)) is on-device hybrid search for markdown — BM25 + vector + LLM reranking, no API key required. We pin it, track it with Dependabot, and gate every version bump through integration tests. Every result is a `qmd://<collection>/<path>` URI — which is exactly the citation an answer needs.
+[`qmd`](https://github.com/tobi/qmd) (by [@tobi](https://github.com/tobi)) is on-device search for markdown, no API key required. We pin it, track it with Dependabot, and gate every version bump through integration tests. The delivered serving path is deliberately **deterministic and LLM-free**: we fuse qmd's keyword (BM25) results with a native in-process FTS5 (BM25) backend using reciprocal-rank fusion (RRF, k=60) — the two tokenizers catch different hits (qmd's keyword-AND misses hyphen/dot-joined terms that FTS5's `unicode61` tokenizer splits), so their union is the recall surface — then apply freshness/category reranking, with no query-time model call. Every result is a `qmd://<collection>/<path>` URI — which is exactly the citation an answer needs.
 
 ## Receipts — the part nobody else ships
 
@@ -268,8 +268,8 @@ For the full chain (including ICO's compile step) set `ANTHROPIC_API_KEY` and ru
 
 | Repo | Version | License |
 |------|---------|---------|
-| [bobs-big-brain-plugin](https://github.com/jeremylongshore/bobs-big-brain-plugin) (the installable product) | v1.1.1 ([npm](https://www.npmjs.com/package/governed-second-brain), SLSA-provenanced) | Apache-2.0 |
-| [intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os) | v1.14.0 | Apache-2.0 |
+| [bobs-big-brain-plugin](https://github.com/jeremylongshore/bobs-big-brain-plugin) (the installable product) | v1.1.2 ([npm](https://www.npmjs.com/package/governed-second-brain), SLSA-provenanced) | Apache-2.0 |
+| [intentional-cognition-os](https://github.com/jeremylongshore/intentional-cognition-os) | v1.21.0 | Apache-2.0 |
 | [qmd-team-intent-kb](https://github.com/jeremylongshore/qmd-team-intent-kb) | v0.7.0 | Apache-2.0 |
 | [qmd](https://github.com/tobi/qmd) (upstream dependency) | 2.5.3 — pinned · Dependabot-tracked · integration-test-gated | MIT |
 

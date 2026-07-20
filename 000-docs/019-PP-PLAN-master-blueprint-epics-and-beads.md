@@ -153,8 +153,11 @@ Every bead in this blueprint is grounded in a file the audit read, a success cri
 
 ## Status addendum — Wave 1 SHIPPED (2026-07-20)
 
-Status note only; the plan above is unchanged. Every Wave-1 track merged with
-required CI green and both MiniMax review lanes read and addressed.
+Status note only; the plan above is unchanged. All listed PRs are merged as of
+this note; the per-track CI and review-lane evidence lives on each PR itself
+(check runs + the two MiniMax lane comments), which is the recorded gates
+surface for this program — this doc intentionally carries pointers, not
+copies.
 
 | Track | Where it landed | Outcome |
 |---|---|---|
@@ -170,5 +173,7 @@ required CI green and both MiniMax review lanes read and addressed.
 
 **Measured consequence for later waves:** the Wave-3 dense-arm bead's gate
 condition ("a measured conceptual-slice gap surviving the reranker") is now
-met with committed evidence; the dense arm remains deferred by design.
+met with committed evidence; the dense arm remains deferred per the ratified
+Wave-0 decision (registrar 044-AT-DECR: dense behind a measured P2 gate) and
+the Wave-3 bead deferral (registrar store, deferred until 2026-09-01).
 Wave 2 (B3, C2, C3, C5, E2, E3, F3–F6, H1–H5, G4, G5) starts on this floor.

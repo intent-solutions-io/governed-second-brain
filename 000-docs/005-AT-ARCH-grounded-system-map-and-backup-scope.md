@@ -184,3 +184,30 @@ Operational runbook + exact restore steps: [`006-AT-RNBK`](006-AT-RNBK-brain-bac
 - Plugin MCP server: `bobs-big-brain-plugin/src/local-server.ts`
 - Backup script + timer + live-stats updater: `~/bin/teamkb-backup.sh`, `~/.config/systemd/user/teamkb-backup.{service,timer}`, `bin/teamkb-systemmap.sh`
 - Repo topology + working surface: [`007-AT-SMAP`](007-AT-SMAP-repo-topology-and-working-surface.md), `../repos.yml`, `../bin/gsb`
+
+---
+
+## Addendum 2026-07-19 — the writer model: many processes, one logical writer (G4)
+
+**Authority:** the compiler's
+`bobs-big-brain-compiler/000-docs/040-AT-ARCH-writer-model-many-processes-one-logical-writer.md`
+— this section is the 10-line summary; read that doc before changing any writer.
+
+- Many processes touch `~/.teamkb/` (MCP servers spawned per Claude/Grok session, crons, CLIs,
+  registrar daemons), but the multi-artifact durable write path has **one logical writer at a
+  time**: an advisory `flock(2)` exclusive lock on `~/.teamkb/.write.lock`.
+- Holders of that one lock: the daily backup (whole run), plugin `brain_govern` +
+  `brain_transition` (8 s bounded wait → clean "brain busy" result), and the compiler's
+  incremental compile (10 s wait → skip-graceful). All three implementations issue the same
+  `flock(2)` syscall on the same path, so they mutually exclude each other.
+- Deliberately NOT on that lock: reads (`brain_search`/`brain_status`), `brain_capture`
+  (pre-admission spool append), the nightly compile *wrapper* (own `.compile.lock`; holding
+  `.write.lock` across the run deadlocked AUTO promotion, incident 2026-07-12..14), and
+  narrow registrar DB writes (WAL + `busy_timeout=5000` serialize at the SQLite door).
+- Both SQLite stores open WAL + `foreign_keys=ON` + `busy_timeout=5000` +
+  `synchronous=NORMAL`; WAL covers the DB file only — the flock exists because govern spans
+  DB + export + qmd index + anchor commit non-atomically.
+- Honest limit: the lock is **cooperative** — a process that ignores it can still write out of
+  band. The detector is the corpus-accounting guard, not the lock: the compiler's
+  `ico audit reconcile` quarantine floor (shipped, PR #176) and the registrar-side
+  `curated_memories` ↔ `audit_events` accounting job (blueprint G2, planned).

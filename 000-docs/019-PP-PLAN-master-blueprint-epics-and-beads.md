@@ -177,3 +177,33 @@ met with committed evidence; the dense arm remains deferred per the ratified
 Wave-0 decision (registrar 044-AT-DECR: dense behind a measured P2 gate) and
 the Wave-3 bead deferral (registrar store, deferred until 2026-09-01).
 Wave 2 (B3, C2, C3, C5, E2, E3, F3–F6, H1–H5, G4, G5) starts on this floor.
+
+---
+
+## Status addendum — Wave 2 SHIPPED (2026-07-20)
+
+Status note only. All 15 Wave-2 tracks merged; per-track gates and both
+MiniMax review lanes live on each PR (the recorded gates surface).
+
+| Track | Where | Outcome |
+|---|---|---|
+| B3 seam gates | registrar #307 | Three CI jobs, green on real runners: delete-compile (retrieval physically removed, govern still builds + tests), swap-model-zero-migration (cache re-keys, zero store migration), verify-receipts-model-free (all four verifiers pass with no ML loadable). Intentional-red rehearsals prove each gate catches its violation. Non-required until stable. |
+| C2 groundedness | registrar #301 | Deterministic scorer + 60-item semi-synthetic-from-real fixture; measured floors (supported-precision 0.8824, unsupported-catch 0.8667); LLM judge env-gated off in CI |
+| C3 govern-eval classes | registrar #301 | 14 labeled decision cases with per-class breakout; the review caught an inflated contradiction TP — honest recall 0.60 committed via a known-false-positive lane |
+| C5 grounding audit | registrar #301 | 048-TQ-AUDT: all 8 improvement loops with anchors; 3 anchorless defects named |
+| E2 supersession atomicity | registrar #299 | Proven already-atomic (BEGIN IMMEDIATE); crash-window rollback test + eval case added |
+| E3 merge-govern CLI | registrar #299+#303 | Read-only clones, abort-before-any-write invariant test, JSON verdict gating fixed post-review |
+| F3 signed merge anchors | registrar #299+#303 | Ed25519 wired into merge-govern; key SOPS-encrypted to operator + VPS escrow; lockfile serializes appends |
+| F4 OpenTimestamps | registrar #299 | Real stamp of the live anchor head submitted to 4 calendars; verify path documented (not zero-network) |
+| F5 chain-boundary doctrine | registrar #298 + umbrella #68 | "What each chain proves" doc + conflation lint with self-test in docs-honesty CI |
+| F6 provenance walk | registrar #298 | 7-link walk memory→compile-trace; live run on the real brain: 7/7 PASS |
+| H1–H3 origin tokens | registrar #302 + plugin #54 | HMAC origin token minted at capture, verified before promotion (invalid → receipted reject), channel allowlist with distinct 422; `unattested` reserved in-schema; id derivation proven origin-independent |
+| H4/H5 honesty scope | registrar #302 + plugin #54 | 049-AT-DECR: local-mode channel attestation out of scope v1; insider-poison residual named (tokens prove WHERE, not TRUE) |
+| G4 writer model | compiler #178 + umbrella #67 | Cooperative flock doctrine documented with verified lock holders/non-holders; 005-AT-ARCH addendum |
+| G5 wiki boundary | compiler #178 | wiki/ = receipted knowledge (reconcile-gated); outputs/ = render scratch; receipting renders deferred with rationale |
+| Contract snapshot | compiler #179 | Vendored MemoryCandidate contract resynced (schemaVersion pin, origin) with rejection-path-pinned tripwires |
+
+Post-merge follow-ups from review findings also landed: #297 (daemon staleness
+watermark race) and #303 (merge-govern hardening). Wave 3 (dense arm — its
+gate condition now met with committed evidence, federation designs, the
+article) remains deferred per the ratified plan.

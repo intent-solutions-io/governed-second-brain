@@ -8,9 +8,21 @@ name: docs-honesty
 on:
   push:
     branches: [main]
-    paths: ['README.md', 'scripts/lint-forbidden-words.sh', '.github/workflows/docs-honesty.yml']
+    paths:
+      [
+        'README.md',
+        'scripts/lint-forbidden-words.sh',
+        'scripts/test-lint-forbidden-words.sh',
+        '.github/workflows/docs-honesty.yml',
+      ]
   pull_request:
-    paths: ['README.md', 'scripts/lint-forbidden-words.sh', '.github/workflows/docs-honesty.yml']
+    paths:
+      [
+        'README.md',
+        'scripts/lint-forbidden-words.sh',
+        'scripts/test-lint-forbidden-words.sh',
+        '.github/workflows/docs-honesty.yml',
+      ]
   workflow_dispatch:
 
 permissions:
@@ -21,5 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Self-test the lint (all three check classes, incl. chain-conflation)
+        run: bash scripts/test-lint-forbidden-words.sh
       - name: Lint README for forbidden claim-words
         run: bash scripts/lint-forbidden-words.sh README.md

@@ -10,7 +10,12 @@
 #  private content; "team" is a runtime mode of the public plugin, not a separate repo.)
 #
 # Fields per repo:
-#   name        canonical name (== local dir name == remote repo name, post-2026-06-24 rename)
+#   name        canonical name (== local dir name == remote repo name). The two engine
+#               repos were renamed 2026-07-19 (bobs-big-brain-registrar#285):
+#               intentional-cognition-os -> bobs-big-brain-compiler and
+#               qmd-team-intent-kb -> bobs-big-brain-registrar. Their npm package
+#               names did NOT change (`intentional-cognition-os` is still the
+#               published package) — only the GitHub repos and local dirs did.
 #   local_path  relative to `base` below
 #   remote      git clone URL
 #   org         github org/owner
@@ -29,17 +34,17 @@ repos:
     layer: umbrella
     role: "Umbrella / landing — the single working surface (this repo)"
 
-  - name: intentional-cognition-os
-    local_path: intentional-cognition-os
-    remote: https://github.com/jeremylongshore/intentional-cognition-os.git
+  - name: bobs-big-brain-compiler
+    local_path: bobs-big-brain-compiler
+    remote: https://github.com/jeremylongshore/bobs-big-brain-compiler.git
     org: jeremylongshore
     visibility: public
     layer: engine
     role: "ICO — the COMPILE engine (deterministic kernel + Claude compiler, 6 passes)"
 
-  - name: qmd-team-intent-kb
-    local_path: qmd-team-intent-kb
-    remote: https://github.com/jeremylongshore/qmd-team-intent-kb.git
+  - name: bobs-big-brain-registrar
+    local_path: bobs-big-brain-registrar
+    remote: https://github.com/jeremylongshore/bobs-big-brain-registrar.git
     org: jeremylongshore
     visibility: public
     layer: engine

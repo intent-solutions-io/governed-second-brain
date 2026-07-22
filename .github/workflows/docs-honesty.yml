@@ -3,14 +3,36 @@
 # may never assert tamper-proof / immutable / non-repudiation / blockchain; the
 # trust model is tamper-EVIDENT (integrity + ordering + rewrite-detection). The
 # lint allows negated/disclaimer usage (the honest "not tamper-proof" framing).
+#
+# The harness-verify step runs FIRST and is the point of the ordering: the linter
+# below is the thing being trusted to enforce the honesty binding, so an unreviewed
+# edit to it must fail the job BEFORE its verdict is believed. `audit-harness verify`
+# checks the pinned sha256 of `scripts/lint-forbidden-words.sh` (see
+# `.harness-hash-extra-patterns` for why that file, and only that file, is pinned)
+# and exits 2 = HARNESS_TAMPERED on a mismatch. After any REVIEWED edit to the
+# linter, re-pin with `./scripts/audit-harness init` and commit `.harness-hash`.
 name: docs-honesty
 
 on:
   push:
     branches: [main]
-    paths: ['README.md', 'scripts/lint-forbidden-words.sh', '.github/workflows/docs-honesty.yml']
+    paths:
+      - 'README.md'
+      - 'scripts/lint-forbidden-words.sh'
+      - 'scripts/audit-harness'
+      - '.audit-harness/**'
+      - '.harness-hash'
+      - '.harness-hash-extra-patterns'
+      - '.github/workflows/docs-honesty.yml'
   pull_request:
-    paths: ['README.md', 'scripts/lint-forbidden-words.sh', '.github/workflows/docs-honesty.yml']
+    paths:
+      - 'README.md'
+      - 'scripts/lint-forbidden-words.sh'
+      - 'scripts/audit-harness'
+      - '.audit-harness/**'
+      - '.harness-hash'
+      - '.harness-hash-extra-patterns'
+      - '.github/workflows/docs-honesty.yml'
   workflow_dispatch:
 
 permissions:
@@ -21,5 +43,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Enforcement travels with the code — the in-repo vendored harness, never a
+      # ~/.claude/ path (IS Testing SOP). This repo is docs + shell + python with no
+      # package.json, so it uses the vendored install rather than a Node dev dep.
+      - name: Verify hash-pinned enforcement artifacts (audit-harness)
+        run: ./scripts/audit-harness verify
+
       - name: Lint README for forbidden claim-words
         run: bash scripts/lint-forbidden-words.sh README.md
